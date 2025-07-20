@@ -1,2 +1,11 @@
 node_modules
 .next/*
+
+# Environment variables (exclude example file)
+.env.*
+!.env.example
+
+***REMOVED***
+CLAUDE.md
+.claude/*
+.mcp.json

@@ -72,14 +72,6 @@ class WebhookClient {
         );
       }
       
-      console.log('Raw webhook response:', {
-        status: response.status,
-        statusText: response.statusText,
-        dataType: typeof response.data,
-        dataKeys: response.data && typeof response.data === 'object' ? Object.keys(response.data) : null,
-        dataPreview: JSON.stringify(response.data)?.substring(0, 200),
-      });
-      
       // If the response is successful (200-299), treat it as success
       // and try to extract bot message if available
       const webhookResponse: WebhookResponse = {
@@ -164,7 +156,7 @@ class WebhookClient {
       
       return webhookResponse;
     } catch (error) {
-      console.error('Failed to send webhook:', error);
+      console.error('Failed to send webhook:', error instanceof Error ? error.message : 'Unknown error');
       
       // Return a proper error response
       return {

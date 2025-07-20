@@ -55,7 +55,9 @@ export function MessageBubble({ message, isUser }: MessageBubbleProps) {
             {/* User message content */}
             <div className="break-words">
               {message.type === 'text' && (
-                <p className="text-sm leading-relaxed">{message.content}</p>
+                <p className="text-sm leading-relaxed">
+                  {message.content && typeof message.content === 'string' ? message.content : '[Invalid content]'}
+                </p>
               )}
               {message.type === 'image' && (
                 <div>
@@ -112,7 +114,8 @@ export function MessageBubble({ message, isUser }: MessageBubbleProps) {
             <div className="break-words">
               {message.type === 'text' && (
                 <div className="text-sm markdown-content" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>
-                  <ReactMarkdown 
+                  {message.content && typeof message.content === 'string' ? (
+                    <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
                     components={{
                       // Custom styling for markdown elements in bot messages
@@ -185,8 +188,13 @@ export function MessageBubble({ message, isUser }: MessageBubbleProps) {
                       ),
                     }}
                   >
-                    {message.content}
-                  </ReactMarkdown>
+                      {message.content}
+                    </ReactMarkdown>
+                  ) : (
+                    <div className="text-sm" style={{ color: theme === 'light' ? '#ef4444' : '#f87171' }}>
+                      [Invalid message content]
+                    </div>
+                  )}
                 </div>
               )}
               {message.type === 'image' && (

@@ -48,16 +48,17 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
       onClick={handleBackdropClick}
     >
       <div className={cn(
-        'bg-white rounded-lg shadow-lg border max-w-md w-full mx-4 max-h-[90vh] overflow-auto',
+        'bg-white dark:bg-slate-900 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 w-full mx-4 max-h-[90vh] overflow-auto',
+        !className?.includes('max-w-') && 'max-w-md',
         className
       )}>
         {/* Header */}
         {title && (
-          <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="text-lg font-semibold">{title}</h2>
+          <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
             <button
               onClick={onClose}
-              className="text-slate-500 hover:text-slate-900"
+              className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
             >
               <X className="w-4 h-4" />
             </button>
@@ -65,7 +66,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
         )}
 
         {/* Content */}
-        <div className="p-4">
+        <div className="p-4 bg-white dark:bg-slate-900">
           {children}
         </div>
       </div>

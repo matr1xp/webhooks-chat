@@ -108,7 +108,7 @@ export function ChatContainer({ className }: ChatContainerProps) {
 
       // Update chat message count
       store.updateChat(activeChat.id, {
-        messageCount: getMessagesForSession(activeChat.sessionId).length + 1,
+        messageCount: getMessagesForSession(activeChat.sessionId).length,
       });
 
       setLoading(true);
@@ -135,21 +135,7 @@ export function ChatContainer({ className }: ChatContainerProps) {
 
       // Send to webhook directly - no queueing
       try {
-        console.log('Sending message to webhook:', {
-          url: activeWebhook.url,
-          hasSecret: !!activeWebhook.apiSecret,
-          secretLength: activeWebhook.apiSecret?.length,
-          sessionId: activeChat.sessionId,
-        });
-        
         const response = await webhookClient.sendMessage(payload, activeWebhook);
-        
-        console.log('Webhook response received:', {
-          success: response.success,
-          hasError: !!response.error,
-          hasBotMessage: !!response.botMessage,
-          botMessageContent: response.botMessage?.content?.substring(0, 100),
-        });
         
         if (response.success) {
           updateMessageStatus(message.id, 'delivered');
@@ -169,11 +155,10 @@ export function ChatContainer({ className }: ChatContainerProps) {
             
             // Update chat message count again for bot response
             store.updateChat(activeChat.id, {
-              messageCount: getMessagesForSession(activeChat.sessionId).length + 1,
+              messageCount: getMessagesForSession(activeChat.sessionId).length,
             });
           }
         } else {
-          console.error('Webhook response indicated failure:', response);
           updateMessageStatus(message.id, 'failed');
           setError(response.error || 'Webhook returned an error response');
         }

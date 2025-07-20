@@ -48,7 +48,17 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    if (editingWebhook) {
+    if (editingWebhook === 'new') {
+      // Reset form for new webhook
+      setFormData({
+        name: '',
+        url: '',
+        apiSecret: '',
+        description: '',
+        color: '#3b82f6',
+      });
+    } else if (editingWebhook) {
+      // Edit existing webhook
       const webhook = store.webhooks.find(w => w.id === editingWebhook);
       if (webhook) {
         setFormData({
@@ -60,6 +70,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
         });
       }
     } else {
+      // No webhook being edited
       setFormData({
         name: '',
         url: '',
@@ -104,14 +115,14 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
       },
     };
 
-    if (editingWebhook) {
-      store.updateWebhook(editingWebhook, webhookData);
-    } else {
+    if (editingWebhook === 'new') {
       const newWebhook = store.addWebhook(webhookData);
       // Set as active if it's the first webhook
       if (store.webhooks.length === 1) {
         store.setActiveWebhook(newWebhook.id);
       }
+    } else if (editingWebhook) {
+      store.updateWebhook(editingWebhook, webhookData);
     }
 
     setEditingWebhook(null);
@@ -160,7 +171,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
         isOpen={isOpen}
         onClose={onClose}
         title="Configuration"
-        className="max-w-6xl max-h-[90vh] overflow-hidden"
+        className="max-w-[95vw] w-full max-h-[90vh] overflow-hidden"
       >
         <div className="flex h-full max-h-[75vh] min-h-[600px]">
           {/* Sidebar */}

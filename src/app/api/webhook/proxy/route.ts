@@ -24,11 +24,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('Proxying webhook request to:', {
-      url: webhookUrl,
-      hasSecret: !!apiSecret,
-      payloadSize: JSON.stringify(payload).length,
-    });
 
     // Forward the request to the actual webhook
     const response = await axios.post(
@@ -46,12 +41,6 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    console.log('Webhook response received:', {
-      status: response.status,
-      statusText: response.statusText,
-      hasData: !!response.data,
-      dataType: typeof response.data,
-    });
 
     // Return the response from the webhook with CORS headers
     return NextResponse.json(
