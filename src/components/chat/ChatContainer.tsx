@@ -6,7 +6,7 @@ import { MessageInput } from './MessageInput';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useConfig } from '@/contexts/ConfigContext';
-import useChatStore from '@/hooks/useChat';
+import { useChatStore } from '@/hooks/useReduxChat';
 import { webhookClient } from '@/lib/webhook-client';
 import { WebhookPayload } from '@/types/chat';
 import { generateSessionId, generateUserId, sanitizeInput } from '@/lib/utils';
@@ -18,19 +18,19 @@ interface ChatContainerProps {
 }
 
 export function ChatContainer({ className }: ChatContainerProps) {
-  try {
-    const { theme } = useTheme();
-    const { store } = useConfig();
-    const {
-      isLoading,
-      error,
-      addMessage,
-      updateMessageStatus,
-      setLoading,
-      setError,
-      setCurrentSession,
-      getMessagesForSession,
-    } = useChatStore();
+  const { theme } = useTheme();
+  const { store } = useConfig();
+  const {
+    messages,
+    isLoading,
+    error,
+    addMessage,
+    updateMessageStatus,
+    setLoading,
+    setError,
+    setCurrentSession,
+    getMessagesForSession,
+  } = useChatStore();
 
   const [userId] = useState(() => generateUserId());
   const [isOnline, setIsOnline] = useState(true);
@@ -40,10 +40,6 @@ export function ChatContainer({ className }: ChatContainerProps) {
   // Get active webhook and chat
   const activeWebhook = store?.getActiveWebhook();
   const activeChat = store?.getActiveChat();
-
-  // Get messages directly from store for the active session
-  const storeState = useChatStore.getState();
-  const messages = activeChat?.sessionId ? storeState.sessions[activeChat.sessionId] || [] : [];
 
   // Set current session when active chat changes
   useEffect(() => {
@@ -82,7 +78,6 @@ export function ChatContainer({ className }: ChatContainerProps) {
     };
   }, [isSendingMessage, activeWebhook]);
 
-
   const handleSendMessage = async (content: string, type: 'text' | 'file' | 'image' = 'text') => {
     // Check if we have an active webhook and chat
     if (!activeWebhook || !activeChat) {
@@ -106,10 +101,13 @@ export function ChatContainer({ className }: ChatContainerProps) {
         content: sanitizedContent,
       });
 
-      // Update chat message count
-      store.updateChat(activeChat.id, {
-        messageCount: getMessagesForSession(activeChat.sessionId).length,
-      });
+      // Update chat message count after adding the message
+      setTimeout(() => {
+        const messageCount = getMessagesForSession(activeChat.sessionId).length;
+        store.updateChat(activeChat.id, {
+          messageCount: messageCount,
+        });
+      }, 0);
 
       setLoading(true);
 
@@ -154,9 +152,12 @@ export function ChatContainer({ className }: ChatContainerProps) {
             updateMessageStatus(botMessage.id, 'delivered');
             
             // Update chat message count again for bot response
-            store.updateChat(activeChat.id, {
-              messageCount: getMessagesForSession(activeChat.sessionId).length,
-            });
+            setTimeout(() => {
+              const messageCount = getMessagesForSession(activeChat.sessionId).length;
+              store.updateChat(activeChat.id, {
+                messageCount: messageCount,
+              });
+            }, 0);
           }
         } else {
           updateMessageStatus(message.id, 'failed');
@@ -174,7 +175,8 @@ export function ChatContainer({ className }: ChatContainerProps) {
     }
   };
 
-  return (
+  try {
+    return (
     <div className={cn(
       'h-screen w-full flex flex-col relative overflow-hidden chat-container',
       // Mobile optimizations

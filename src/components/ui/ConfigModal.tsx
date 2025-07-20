@@ -117,8 +117,8 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
 
     if (editingWebhook === 'new') {
       const newWebhook = store.addWebhook(webhookData);
-      // Set as active if it's the first webhook
-      if (store.webhooks.length === 1) {
+      // Set as active if there's no currently active webhook
+      if (!store.activeWebhookId) {
         store.setActiveWebhook(newWebhook.id);
       }
     } else if (editingWebhook) {
@@ -286,6 +286,17 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                         </div>
 
                         <div className="flex items-center space-x-2 ml-4">
+                          {/* Activate/Deactivate Button */}
+                          {!webhook.isActive && (
+                            <button
+                              onClick={() => store.setActiveWebhook(webhook.id)}
+                              className="px-3 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                              title="Set as Active Webhook"
+                            >
+                              Activate
+                            </button>
+                          )}
+                          
                           {/* Connection Test */}
                           <button
                             onClick={() => testConnection(webhook)}

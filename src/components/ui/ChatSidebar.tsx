@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useSelector } from 'react-redux';
+import { selectActiveWebhook, selectActiveChat, selectChatsForWebhook } from '@/store/configSelectors';
 import { cn } from '@/lib/utils';
 import { 
   MessageSquare, 
@@ -31,9 +33,10 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
   const [editingChat, setEditingChat] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
 
-  const activeWebhook = store.getActiveWebhook();
-  const chatsForActiveWebhook = activeWebhook ? store.getChatsForWebhook(activeWebhook.id) : [];
-  const activeChat = store.getActiveChat();
+  // Use Redux selectors for reactive updates
+  const activeWebhook = useSelector(selectActiveWebhook);
+  const activeChat = useSelector(selectActiveChat);
+  const chatsForActiveWebhook = useSelector(selectChatsForWebhook(activeWebhook?.id || ''));
 
   const handleNewChat = () => {
     if (!activeWebhook) return;
