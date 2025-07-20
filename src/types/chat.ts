@@ -1,0 +1,80 @@
+export interface Message {
+  id: string;
+  sessionId: string;
+  type: 'text' | 'file' | 'image';
+  content: string;
+  timestamp: string;
+  userId: string;
+  status: 'sending' | 'delivered' | 'failed';
+  isBot?: boolean; // Flag to identify bot messages
+  metadata?: Record<string, any>;
+}
+
+export interface User {
+  id: string;
+  name?: string;
+}
+
+export interface ChatSession {
+  id: string;
+  userId: string;
+  messages: Message[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WebhookPayload {
+  sessionId: string;
+  messageId: string;
+  timestamp: string;
+  user: User;
+  message: {
+    type: 'text' | 'file' | 'image';
+    content: string;
+    metadata?: Record<string, any>;
+  };
+  context?: {
+    previousMessages?: number;
+    userAgent?: string;
+    source: 'web' | 'mobile';
+  };
+}
+
+export interface WebhookResponse {
+  success: boolean;
+  messageId: string;
+  timestamp: string;
+  error?: string;
+  // Bot response from n8n workflow
+  botMessage?: {
+    content: string;
+    type?: 'text' | 'file' | 'image';
+    metadata?: Record<string, any>;
+  };
+}
+
+export interface ChatStore {
+  // Multi-session support
+  sessions: { [sessionId: string]: Message[] };
+  currentSessionId: string | null;
+  isLoading: boolean;
+  error: string | null;
+  
+  // Legacy support - computed from current session
+  messages: Message[];
+  currentSession: ChatSession | null;
+  
+  // Session management
+  setCurrentSession: (sessionId: string) => void;
+  getMessagesForSession: (sessionId: string) => Message[];
+  
+  // Message management
+  addMessage: (message: Omit<Message, 'id' | 'timestamp' | 'status'>) => Message;
+  updateMessageStatus: (messageId: string, status: Message['status']) => void;
+  clearMessages: (sessionId?: string) => void;
+  clearAllSessions: () => void;
+  
+  // State management
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+}
