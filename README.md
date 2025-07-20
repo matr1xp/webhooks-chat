@@ -11,6 +11,7 @@ A modern, responsive chat interface built with Next.js that sends user messages 
 - 🔄 **Message Queue**: Offline support with automatic retry mechanisms
 - 🔌 **n8n Integration**: Direct webhook integration with comprehensive error handling
 - 🎨 **Modern UI**: Clean design with shadcn/ui components
+- 🏪 **State Management**: Redux Toolkit with Redux Persist for reliable state management
 - ⚡ **Performance**: Optimized for speed and user experience
 
 ## Quick Start
@@ -97,9 +98,18 @@ src/
 │   └── ui/
 │       ├── FileUpload.tsx         # Drag-and-drop upload
 │       └── Modal.tsx              # Modal component
+├── store/
+│   ├── index.ts                   # Redux store configuration
+│   ├── chatSlice.ts               # Chat state management
+│   ├── configSlice.ts             # Configuration management
+│   ├── messageQueueSlice.ts       # Message queue management
+│   └── configSelectors.ts         # Redux selectors
 ├── hooks/
-│   ├── useChat.ts                 # Chat state management
-│   └── useMessageQueue.ts         # Offline queue system
+│   ├── useReduxChat.ts            # Redux chat hooks
+│   ├── useReduxConfig.ts          # Redux config hooks
+│   └── useReduxMessageQueue.ts    # Redux queue hooks
+├── providers/
+│   └── ReduxProvider.tsx          # Redux provider with persistence
 ├── lib/
 │   ├── webhook-client.ts          # n8n webhook client
 │   ├── validation.ts              # Zod schemas
@@ -116,9 +126,10 @@ src/
 
 #### Message Queue System
 - Automatic retry with exponential backoff
-- Persistent storage for offline messages
+- Persistent storage for offline messages using Redux Persist
 - Queue processing every 5 seconds
 - Manual retry functionality
+- State persistence across browser sessions
 
 #### File Upload
 - Drag-and-drop interface
@@ -174,7 +185,7 @@ npm run type-check   # Run TypeScript checks
 - **Framework**: Next.js 14 with App Router
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
-- **State Management**: Zustand
+- **State Management**: Redux Toolkit with Redux Persist
 - **HTTP Client**: Axios
 - **Validation**: Zod
 - **Icons**: Lucide React
@@ -190,6 +201,30 @@ npm run type-check   # Run TypeScript checks
 
 3. Deploy to your preferred platform (Vercel, Netlify, etc.)
 
+## State Management
+
+This application uses **Redux Toolkit** with **Redux Persist** for comprehensive state management:
+
+### Redux Store Structure
+- **Chat Slice** (`chatSlice.ts`): Manages messages, sessions, and chat state
+- **Config Slice** (`configSlice.ts`): Handles webhook configurations and settings
+- **Message Queue Slice** (`messageQueueSlice.ts`): Manages offline message queuing
+
+### Key Benefits
+- **Persistent State**: All state automatically persists across browser sessions
+- **Redux DevTools**: Full debugging support with Redux DevTools extension
+- **Predictable Updates**: All state changes are trackable and debuggable
+- **Optimistic UI**: Immediate UI updates with proper rollback on failures
+- **Reactive Components**: Components automatically re-render on state changes
+
+### Usage Example
+```typescript
+// Using Redux hooks in components
+const { messages, addMessage, updateMessageStatus } = useChatStore();
+const activeWebhook = useSelector(selectActiveWebhook);
+const dispatch = useDispatch();
+```
+
 ## Customization
 
 ### Styling
@@ -200,6 +235,9 @@ Extend the message types in `src/types/chat.ts` and update validation schemas.
 
 ### Webhook Payload
 Customize the payload structure in `src/lib/webhook-client.ts`.
+
+### Redux Store
+Extend the Redux store by adding new slices in `src/store/` and updating the root store configuration.
 
 ## Troubleshooting
 
