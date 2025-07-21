@@ -224,4 +224,5 @@ class WebhookClient {
   }
 }
 
+export { WebhookClient };
 export const webhookClient = new WebhookClient();

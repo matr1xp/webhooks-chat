@@ -47,10 +47,11 @@ export function sanitizeInput(input: string): string {
 
 export function detectMessageType(content: string): 'text' | 'file' | 'image' {
   // Simple detection logic - can be enhanced
-  if (content.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+  // Check for image extensions (either at end or followed by query params)
+  if (content.match(/\.(jpg|jpeg|png|gif|webp)($|\?)/i)) {
     return 'image';
   }
-  if (content.match(/\.(pdf|doc|docx|txt|csv)$/i)) {
+  if (content.match(/\.(pdf|doc|docx|txt|csv)($|\?)/i)) {
     return 'file';
   }
   return 'text';

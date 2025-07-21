@@ -7,7 +7,7 @@ export const MessageSchema = z.object({
 });
 
 export const UserSchema = z.object({
-  id: z.string(),
+  id: z.string().min(1, 'User ID cannot be empty'),
   name: z.string().optional(),
 });
 
