@@ -192,37 +192,32 @@ class WebhookClient {
 
   async checkHealth(webhookConfig?: WebhookConfig): Promise<boolean> {
     try {
-      // Use provided webhook config or fallback to environment variables
-      const url = webhookConfig?.url || `${this.fallbackURL}/api/webhook/send`;
-      
-      // For external webhooks (like N8N), just validate the URL format
-      // since CORS prevents direct health checks and webhooks are designed for POST requests
-      const isExternalWebhook = webhookConfig?.url && !webhookConfig.url.includes('localhost') && !webhookConfig.url.includes('127.0.0.1');
-      
-      if (isExternalWebhook) {
-        try {
-          new URL(url);
-          return true; // Valid URL format, assume healthy for external webhooks
-        } catch {
-          return false; // Invalid URL format
+      // Use the same test-webhook endpoint that ConfigModal uses - it's more reliable
+      const envTimeout = process.env.NEXT_PUBLIC_TIMEOUT;
+      let timeoutMs = 10000; // Default to 10 seconds for health checks
+      if (envTimeout) {
+        const parsedTimeout = parseInt(envTimeout);
+        if (!isNaN(parsedTimeout) && parsedTimeout >= 1000 && parsedTimeout <= 120000) {
+          timeoutMs = Math.max(parsedTimeout / 3, 5000); // Third of main timeout, min 5 seconds
         }
-      } else {
-        // For local webhooks, check the /api/health endpoint
-        const envTimeout = process.env.NEXT_PUBLIC_TIMEOUT;
-        let timeoutMs = 10000; // Default to 10 seconds for health checks
-        if (envTimeout) {
-          const parsedTimeout = parseInt(envTimeout);
-          if (!isNaN(parsedTimeout) && parsedTimeout >= 1000 && parsedTimeout <= 120000) {
-            timeoutMs = Math.max(parsedTimeout / 3, 5000); // Third of main timeout, min 5 seconds
-          }
-        }
-        
-        const baseUrl = new URL(url).origin;
-        const response = await axios.get(`${baseUrl}/api/health`, {
-          timeout: timeoutMs,
-        });
-        return response.status === 200;
       }
+      
+      // Use the same approach as ConfigModal - POST to test-webhook with body data
+      const response = await axios.post(`${this.fallbackURL}/api/test-webhook`, {
+        url: webhookConfig?.url,
+        secret: webhookConfig?.apiSecret,
+        healthCheck: true, // Flag to indicate this is a health check
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: timeoutMs,
+      });
+      
+      const data = response.data;
+      const isHealthy = response.status >= 200 && response.status < 300 && data.success === true;
+      
+      return isHealthy;
     } catch (error) {
       return false;
     }

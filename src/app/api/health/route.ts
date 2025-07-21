@@ -10,47 +10,59 @@ export async function GET(request: NextRequest) {
     };
 
     // Check n8n webhook availability
-    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
-    if (n8nWebhookUrl) {
+    // Use webhook config from query params if provided, otherwise fall back to env vars
+    const url = new URL(request.url);
+    const webhookUrl = url.searchParams.get('webhookUrl') || process.env.N8N_WEBHOOK_URL;
+    const apiSecret = url.searchParams.get('apiSecret') || process.env.WEBHOOK_SECRET;
+    const skipExternalHealthCheck = process.env.SKIP_EXTERNAL_HEALTH_CHECK === 'true';
+    
+    
+    if (webhookUrl && !skipExternalHealthCheck) {
       try {
-        // Prepare headers for health check
+        // Prepare headers for health check (same as test-webhook)
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
+          'User-Agent': 'Chat-Interface-Health/1.0',
         };
 
         // Add X-Webhook-Secret header if provided
-        const webhookSecret = process.env.WEBHOOK_SECRET;
-        if (webhookSecret) {
-          headers['X-Webhook-Secret'] = webhookSecret;
+        if (apiSecret) {
+          headers['X-Webhook-Secret'] = apiSecret;
         }
 
-        // Get configurable timeout (default to 5 seconds for health check, half of main timeout)
-        let timeoutMs = 5000;
+        // Get configurable timeout (same logic as test-webhook)
+        let timeoutMs = 5000; // Default 5 seconds for health checks
         if (process.env.TIMEOUT) {
           const parsedTimeout = parseInt(process.env.TIMEOUT);
           if (!isNaN(parsedTimeout) && parsedTimeout >= 1000 && parsedTimeout <= 120000) {
-            timeoutMs = Math.max(parsedTimeout / 2, 1000); // Half of main timeout, min 1 second
+            timeoutMs = Math.min(parsedTimeout / 2, 5000); // Half of main timeout, max 5 seconds
           }
         }
 
-        // Use HEAD request for health check - no body payload, minimal impact
-        const response = await axios.head(n8nWebhookUrl, { 
-          headers: {
-            ...(process.env.WEBHOOK_SECRET && { 'X-Webhook-Secret': process.env.WEBHOOK_SECRET })
-          },
-          timeout: timeoutMs,
-          validateStatus: (status) => status < 500 // Accept 2xx, 3xx, 4xx as "reachable"
-        });
-        checks.n8nWebhook = true;
+        // Use same approach as test-webhook - simple POST request
+        const response = await axios.post(webhookUrl, 
+          { message: "__health_check__" }, // Same payload as test-webhook
+          { 
+            headers,
+            timeout: timeoutMs,
+            // Don't use validateStatus - let axios handle normal HTTP responses
+          }
+        );
+        
+        // Simple success check - any 2xx response means healthy (same as test-webhook)
+        checks.n8nWebhook = response.status >= 200 && response.status < 300;
       } catch (error: any) {
-        // If it's a network error (connection refused, timeout), mark as down
-        // If it's a 4xx error (like 404), the server is reachable but webhook might be inactive
-        if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT') {
-          checks.n8nWebhook = false;
-        } else {
-          // Server responded (even with error), so it's reachable
-          checks.n8nWebhook = true;
-        }
+        
+        // Simple failure handling - any error means unhealthy (same as test-webhook)
+        checks.n8nWebhook = false;
+      }
+    } else if (webhookUrl && skipExternalHealthCheck) {
+      // If external health checks are disabled, just validate URL format
+      try {
+        new URL(webhookUrl);
+        checks.n8nWebhook = true; // Assume healthy if URL is valid
+      } catch {
+        checks.n8nWebhook = false; // Invalid URL format
       }
     }
 

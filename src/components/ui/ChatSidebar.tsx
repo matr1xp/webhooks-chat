@@ -222,13 +222,13 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
                           }}
                           autoFocus
                           className="w-full text-sm font-medium bg-transparent border-none outline-none"
-                          style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}
+                          style={{ color: theme === 'light' ? '#374151' : '#1f2937' }}
                         />
                       ) : (
                         <h3 className="text-sm font-medium truncate" style={{ 
                           color: chat.id === activeChat?.id 
                             ? '#3b82f6' 
-                            : '#e2e8f0' 
+                            : theme === 'light' ? '#374151' : '#e2e8f0' 
                         }}>
                           {chat.name}
                         </h3>
@@ -263,8 +263,19 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
                                 e.stopPropagation();
                                 handleEditChat(chat.id, chat.name);
                               }}
-                              className="px-3 py-1 text-xs text-left hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center"
-                              style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}
+                              className="px-3 py-1 text-xs text-left flex items-center transition-colors"
+                              style={{ 
+                                color: theme === 'light' ? '#374151' : '#94a3b8',
+                                backgroundColor: 'transparent'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = theme === 'light' ? '#f1f5f9' : '#374151';
+                                e.currentTarget.style.color = theme === 'light' ? '#111827' : '#ffffff';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                                e.currentTarget.style.color = theme === 'light' ? '#374151' : '#94a3b8';
+                              }}
                             >
                               <Edit3 className="w-3 h-3 mr-2" />
                               Rename
@@ -316,15 +327,27 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
         title="Delete Chat"
         className="max-w-md"
       >
-        <div className="space-y-4">
-          <p className="text-sm" style={{ color: '#e2e8f0' }}>
+        <div className="space-y-4" style={{ backgroundColor: theme === 'light' ? '#ffffff' : '#0f172a', padding: '16px', borderRadius: '8px' }}>
+          <p className="text-sm" style={{ color: theme === 'light' ? '#111827' : '#ffffff' }}>
             Are you sure you want to delete this chat? This action cannot be undone and all messages will be lost.
           </p>
           <div className="flex justify-end space-x-3">
             <button
               onClick={() => setShowDeleteModal(null)}
-              className="px-4 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-              style={{ color: '#e2e8f0' }}
+              className="px-4 py-2 text-sm border rounded-lg transition-colors"
+              style={{ 
+                color: theme === 'light' ? '#111827' : '#ffffff',
+                borderColor: theme === 'light' ? '#e2e8f0' : '#374151',
+                backgroundColor: 'transparent'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = theme === 'light' ? '#f1f5f9' : '#374151';
+                e.currentTarget.style.color = theme === 'light' ? '#111827' : '#ffffff';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = theme === 'light' ? '#111827' : '#ffffff';
+              }}
             >
               Cancel
             </button>

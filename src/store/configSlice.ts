@@ -3,6 +3,35 @@ import { WebhookConfig, ChatConfig } from '@/types/config';
 import { v4 as uuidv4 } from 'uuid';
 import { generateSessionId } from '@/lib/utils';
 
+// Create default webhook from environment variables if available
+function createDefaultWebhook(): WebhookConfig | null {
+  // Check both client-side and server-side environment variables
+  const webhookUrl = 
+    process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 
+    (typeof window === 'undefined' ? process.env.N8N_WEBHOOK_URL : null);
+  
+  const webhookSecret = 
+    process.env.NEXT_PUBLIC_WEBHOOK_SECRET || 
+    (typeof window === 'undefined' ? process.env.WEBHOOK_SECRET : null);
+  
+  if (webhookUrl) {
+    return {
+      id: uuidv4(),
+      name: 'Default Webhook',
+      url: webhookUrl,
+      apiSecret: webhookSecret,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      metadata: {
+        description: 'Auto-created from environment variables',
+        tags: ['default'],
+      }
+    };
+  }
+  
+  return null;
+}
+
 interface ConfigState {
   webhooks: WebhookConfig[];
   chats: ChatConfig[];
@@ -12,10 +41,12 @@ interface ConfigState {
   error: string | null;
 }
 
+// Create initial state with default webhook if available
+const defaultWebhook = createDefaultWebhook();
 const initialState: ConfigState = {
-  webhooks: [],
+  webhooks: defaultWebhook ? [defaultWebhook] : [],
   chats: [],
-  activeWebhookId: null,
+  activeWebhookId: defaultWebhook?.id || null,
   activeChatId: null,
   isLoading: false,
   error: null,
@@ -133,6 +164,17 @@ const configSlice = createSlice({
     setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
     },
+
+    initializeFromEnv: (state) => {
+      // Only initialize if no webhooks exist
+      if (state.webhooks.length === 0) {
+        const defaultWebhook = createDefaultWebhook();
+        if (defaultWebhook) {
+          state.webhooks.push(defaultWebhook);
+          state.activeWebhookId = defaultWebhook.id;
+        }
+      }
+    },
   },
 });
 
@@ -148,6 +190,7 @@ export const {
   clearConfig,
   setLoading,
   setError,
+  initializeFromEnv,
 } = configSlice.actions;
 
 export default configSlice.reducer;

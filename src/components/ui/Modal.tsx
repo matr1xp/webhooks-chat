@@ -48,17 +48,29 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
       onClick={handleBackdropClick}
     >
       <div className={cn(
-        'bg-white dark:bg-slate-900 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 w-full mx-4 max-h-[90vh] overflow-auto',
+        'rounded-lg shadow-lg border w-full mx-4 max-h-[90vh] overflow-auto',
         !className?.includes('max-w-') && 'max-w-md',
         className
-      )}>
+      )}
+      style={{ 
+        backgroundColor: document.documentElement.classList.contains('dark') ? '#0f172a' : '#ffffff',
+        borderColor: document.documentElement.classList.contains('dark') ? '#374151' : '#e2e8f0'
+      }}>
         {/* Header */}
         {title && (
-          <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
+          <div className="flex items-center justify-between p-4 border-b" 
+               style={{ 
+                 backgroundColor: document.documentElement.classList.contains('dark') ? '#0f172a' : '#ffffff',
+                 borderColor: document.documentElement.classList.contains('dark') ? '#374151' : '#e2e8f0'
+               }}>
+            <h2 className="text-lg font-semibold" 
+                style={{ color: document.documentElement.classList.contains('dark') ? '#ffffff' : '#111827' }}>
+              {title}
+            </h2>
             <button
               onClick={onClose}
-              className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+              style={{ color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280' }}
+              className="hover:opacity-80 transition-opacity"
             >
               <X className="w-4 h-4" />
             </button>
@@ -66,7 +78,8 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
         )}
 
         {/* Content */}
-        <div className="p-4 bg-white dark:bg-slate-900">
+        <div className="p-4" 
+             style={{ backgroundColor: document.documentElement.classList.contains('dark') ? '#0f172a' : '#ffffff' }}>
           {children}
         </div>
       </div>

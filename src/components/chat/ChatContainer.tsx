@@ -33,7 +33,7 @@ export function ChatContainer({ className }: ChatContainerProps) {
   } = useChatStore();
 
   const [userId] = useState(() => generateUserId());
-  const [isOnline, setIsOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const isInitialized = useRef(false);
 
@@ -45,8 +45,27 @@ export function ChatContainer({ className }: ChatContainerProps) {
   useEffect(() => {
     if (activeChat?.sessionId) {
       setCurrentSession(activeChat.sessionId);
+    } else {
+      // Clear session when no active chat
+      setCurrentSession(null);
     }
   }, [activeChat?.sessionId, setCurrentSession]);
+
+  // Update message count when messages change
+  useEffect(() => {
+    if (activeChat?.sessionId) {
+      const currentMessageCount = messages.length;
+      const storedMessageCount = activeChat.messageCount;
+      
+      // Only update if the count is different to avoid unnecessary updates
+      if (currentMessageCount !== storedMessageCount) {
+        store.updateChat(activeChat.id, {
+          messageCount: currentMessageCount,
+          lastActivity: new Date().toISOString(),
+        });
+      }
+    }
+  }, [messages.length, activeChat?.id, activeChat?.sessionId, activeChat?.messageCount, store]);
 
   // Check webhook health
   useEffect(() => {
@@ -64,10 +83,15 @@ export function ChatContainer({ className }: ChatContainerProps) {
       }
     };
 
-    // Only run initial health check once
-    if (!isInitialized.current && activeWebhook) {
-      isInitialized.current = true;
+    // Run health check when activeWebhook changes or on initial load
+    if (activeWebhook) {
+      if (!isInitialized.current) {
+        isInitialized.current = true;
+      }
       checkHealth();
+    } else {
+      // No active webhook, set offline
+      setIsOnline(false);
     }
     
     // Check health every 10 minutes (600000ms) - reduced frequency for external webhooks
@@ -101,13 +125,7 @@ export function ChatContainer({ className }: ChatContainerProps) {
         content: sanitizedContent,
       });
 
-      // Update chat message count after adding the message
-      setTimeout(() => {
-        const messageCount = getMessagesForSession(activeChat.sessionId).length;
-        store.updateChat(activeChat.id, {
-          messageCount: messageCount,
-        });
-      }, 0);
+      // Message count will be updated automatically by useEffect
 
       setLoading(true);
 
@@ -151,13 +169,7 @@ export function ChatContainer({ className }: ChatContainerProps) {
             // Bot messages are always delivered
             updateMessageStatus(botMessage.id, 'delivered');
             
-            // Update chat message count again for bot response
-            setTimeout(() => {
-              const messageCount = getMessagesForSession(activeChat.sessionId).length;
-              store.updateChat(activeChat.id, {
-                messageCount: messageCount,
-              });
-            }, 0);
+            // Message count will be updated automatically by useEffect
           }
         } else {
           updateMessageStatus(message.id, 'failed');
@@ -207,19 +219,26 @@ export function ChatContainer({ className }: ChatContainerProps) {
               {/* Connection status - modernized */}
               <div className={cn(
                 "flex items-center space-x-1 sm:space-x-2 px-2 py-1 rounded-full text-xs font-medium transition-all duration-300",
-                isOnline 
+                isOnline === true
                   ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 shadow-emerald-200/50 dark:shadow-emerald-800/50 shadow-sm" 
-                  : "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 shadow-red-200/50 dark:shadow-red-800/50 shadow-sm"
+                  : isOnline === false
+                  ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 shadow-red-200/50 dark:shadow-red-800/50 shadow-sm"
+                  : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shadow-blue-200/50 dark:shadow-blue-800/50 shadow-sm"
               )}>
-                {isOnline ? (
+                {isOnline === true ? (
                   <>
                     <div className="w-2 h-2 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse"></div>
                     <span className="hidden sm:inline">Connected</span>
                   </>
-                ) : (
+                ) : isOnline === false ? (
                   <>
                     <div className="w-2 h-2 bg-red-500 dark:bg-red-400 rounded-full"></div>
                     <span className="hidden sm:inline">Disconnected</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full animate-spin"></div>
+                    <span className="hidden sm:inline">Checking...</span>
                   </>
                 )}
               </div>

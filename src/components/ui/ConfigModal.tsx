@@ -143,16 +143,21 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
     setConnectionResults(prev => ({ ...prev, [webhook.id]: null }));
 
     try {
-      // Simple connectivity test
-      const response = await fetch(webhook.url, {
-        method: 'OPTIONS',
+      // Test the specific webhook by sending a test POST request through our API
+      const response = await fetch('/api/test-webhook', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(webhook.apiSecret && { 'X-Webhook-Secret': webhook.apiSecret }),
         },
+        body: JSON.stringify({
+          url: webhook.url,
+          secret: webhook.apiSecret,
+          healthCheck: true, // Flag to indicate this is a health check
+        }),
       });
       
-      const isConnected = response.ok || response.status === 405; // 405 = Method Not Allowed is ok for OPTIONS
+      const data = await response.json();
+      const isConnected = response.ok && data.success === true;
       setConnectionResults(prev => ({ ...prev, [webhook.id]: isConnected }));
     } catch (error) {
       setConnectionResults(prev => ({ ...prev, [webhook.id]: false }));
@@ -242,9 +247,22 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                               className="w-3 h-3 rounded-full"
                               style={{ backgroundColor: webhook.metadata?.color || '#3b82f6' }}
                             />
-                            <h4 className="font-medium" style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}>
+                            <div 
+                              style={{ 
+                                color: '#ffffff',
+                                fontWeight: '600',
+                                fontSize: '1rem',
+                                lineHeight: '1.5rem',
+                                margin: 0,
+                                padding: 0,
+                                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                                borderRadius: '4px',
+                                paddingLeft: '4px',
+                                paddingRight: '4px'
+                              }}
+                            >
                               {webhook.name}
-                            </h4>
+                            </div>
                             {webhook.isActive && (
                               <span className="px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-full">
                                 Active
@@ -317,7 +335,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                             ) : connectionResults[webhook.id] === false ? (
                               <AlertCircle className="w-4 h-4" />
                             ) : (
-                              <Globe className="w-4 h-4" />
+                              <Globe className="w-4 h-4" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }} />
                             )}
                           </button>
 
@@ -415,10 +433,13 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                 className={cn(
                   'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
-                  'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700',
                   errors.name && 'border-red-500'
                 )}
-                style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}
+                style={{ 
+                  color: theme === 'light' ? '#111827' : '#ffffff',
+                  backgroundColor: theme === 'light' ? '#ffffff' : '#1e293b',
+                  borderColor: theme === 'light' ? '#e2e8f0' : '#475569'
+                }}
                 placeholder="My Webhook"
               />
               {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
@@ -447,10 +468,13 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
               onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
               className={cn(
                 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm',
-                'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700',
                 errors.url && 'border-red-500'
               )}
-              style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}
+              style={{ 
+                color: theme === 'light' ? '#111827' : '#ffffff',
+                backgroundColor: theme === 'light' ? '#ffffff' : '#1e293b',
+                borderColor: theme === 'light' ? '#e2e8f0' : '#475569'
+              }}
               placeholder="https://example.com/webhook"
             />
             {errors.url && <p className="text-red-500 text-xs mt-1">{errors.url}</p>}
@@ -465,10 +489,13 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
               value={formData.apiSecret}
               onChange={(e) => setFormData(prev => ({ ...prev, apiSecret: e.target.value }))}
               className={cn(
-                'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm',
-                'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm'
               )}
-              style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}
+              style={{ 
+                color: theme === 'light' ? '#111827' : '#ffffff',
+                backgroundColor: theme === 'light' ? '#ffffff' : '#1e293b',
+                borderColor: theme === 'light' ? '#e2e8f0' : '#475569'
+              }}
               placeholder="Optional authentication secret"
             />
           </div>
@@ -481,10 +508,13 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               className={cn(
-                'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none',
-                'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none'
               )}
-              style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}
+              style={{ 
+                color: theme === 'light' ? '#111827' : '#ffffff',
+                backgroundColor: theme === 'light' ? '#ffffff' : '#1e293b',
+                borderColor: theme === 'light' ? '#e2e8f0' : '#475569'
+              }}
               rows={3}
               placeholder="Brief description of this webhook..."
             />
