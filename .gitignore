@@ -13,3 +13,9 @@ CLAUDE.md
 
 # Test coverage reports
 coverage/
+
+# Firebase CLI cache and deployment artifacts
+.firebase/
+
+# TypeScript build info
+tsconfig.tsbuildinfo
