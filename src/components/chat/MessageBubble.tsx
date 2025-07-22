@@ -157,8 +157,8 @@ export function MessageBubble({ message, isUser }: MessageBubbleProps) {
                           {children}
                         </pre>
                       ),
-                      ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>{children}</ul>,
-                      ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>{children}</ol>,
+                      ul: ({ children }) => <ul className="list-disc list-outside mb-2 space-y-1 pl-4" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal list-outside mb-2 space-y-1 pl-4" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>{children}</ol>,
                       li: ({ children }) => <li className="text-sm leading-relaxed" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>{children}</li>,
                       h1: ({ children }) => <h1 className="text-lg font-bold mb-3 border-b border-slate-200 dark:border-slate-600 pb-1" style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}>{children}</h1>,
                       h2: ({ children }) => <h2 className="text-base font-bold mb-2" style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}>{children}</h2>,
