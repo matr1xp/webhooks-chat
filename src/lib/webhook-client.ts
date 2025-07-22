@@ -91,10 +91,10 @@ class WebhookClient {
             content: data,
             type: 'text',
           };
-        } else if (data.message || data.content || data.text || data.response) {
+        } else if (data.message || data.content || data.text || data.response || data.output) {
           // Object with message field
           webhookResponse.botMessage = {
-            content: data.message || data.content || data.text || data.response,
+            content: data.message || data.content || data.text || data.response || data.output,
             type: 'text',
             metadata: data.metadata,
           };
@@ -109,9 +109,9 @@ class WebhookClient {
               content: firstItem,
               type: 'text',
             };
-          } else if (firstItem && (firstItem.message || firstItem.content || firstItem.text || firstItem.response)) {
+          } else if (firstItem && (firstItem.message || firstItem.content || firstItem.text || firstItem.response || firstItem.output)) {
             webhookResponse.botMessage = {
-              content: firstItem.message || firstItem.content || firstItem.text || firstItem.response,
+              content: firstItem.message || firstItem.content || firstItem.text || firstItem.response || firstItem.output,
               type: 'text',
               metadata: firstItem.metadata,
             };

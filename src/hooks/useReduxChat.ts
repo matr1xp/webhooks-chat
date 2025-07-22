@@ -43,7 +43,7 @@ export const useChatStore = () => {
     return sessions[sessionId] || [];
   };
 
-  const addMessage = (messageData: Omit<Message, 'id' | 'timestamp' | 'status'>): Message => {
+  const addMessage = async (messageData: Omit<Message, 'id' | 'timestamp' | 'status'>): Promise<Message> => {
     // Create the message with ID and timestamp to return
     const message: Message = {
       ...messageData,

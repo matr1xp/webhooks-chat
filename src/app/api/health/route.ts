@@ -90,13 +90,110 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Test specific webhook (POST request)
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { url: webhookUrl, secret: apiSecret } = body;
+
+    if (!webhookUrl) {
+      return NextResponse.json(
+        { status: 'error', message: 'Webhook URL is required' },
+        { status: 400 }
+      );
+    }
+
+    const skipExternalHealthCheck = process.env.SKIP_EXTERNAL_HEALTH_CHECK === 'true';
+    
+    if (skipExternalHealthCheck) {
+      // Just validate URL format if external checks are disabled
+      try {
+        new URL(webhookUrl);
+        return NextResponse.json({
+          status: 'healthy',
+          message: 'URL format is valid (external checks disabled)',
+        });
+      } catch {
+        return NextResponse.json(
+          { status: 'error', message: 'Invalid URL format' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Prepare headers for webhook test
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'User-Agent': 'Chat-Interface-Health/1.0',
+    };
+
+    // Add X-Webhook-Secret header if provided
+    if (apiSecret) {
+      headers['X-Webhook-Secret'] = apiSecret;
+    }
+
+    // Get configurable timeout
+    let timeoutMs = 5000; // Default 5 seconds for health checks
+    if (process.env.TIMEOUT) {
+      const parsedTimeout = parseInt(process.env.TIMEOUT);
+      if (!isNaN(parsedTimeout) && parsedTimeout >= 1000 && parsedTimeout <= 120000) {
+        timeoutMs = Math.min(parsedTimeout / 2, 5000); // Half of main timeout, max 5 seconds
+      }
+    }
+
+    try {
+      // Test the webhook with a health check message
+      const response = await axios.post(webhookUrl, 
+        { message: "__health_check__" },
+        { 
+          headers,
+          timeout: timeoutMs,
+        }
+      );
+      
+      // Check if response is successful
+      const isHealthy = response.status >= 200 && response.status < 300;
+      
+      return NextResponse.json({
+        status: isHealthy ? 'healthy' : 'unhealthy',
+        message: isHealthy ? 'Webhook is responding' : 'Webhook returned error status',
+        statusCode: response.status,
+      });
+      
+    } catch (error: any) {
+      let message = 'Webhook test failed';
+      
+      if (error.code === 'ECONNABORTED') {
+        message = 'Webhook request timed out';
+      } else if (error.response) {
+        message = `Webhook returned ${error.response.status}`;
+      } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+        message = 'Cannot reach webhook URL';
+      }
+      
+      return NextResponse.json(
+        { status: 'error', message },
+        { status: 503 }
+      );
+    }
+    
+  } catch (error: any) {
+    console.error('Webhook test error:', error.message);
+    
+    return NextResponse.json(
+      { status: 'error', message: 'Failed to test webhook' },
+      { status: 500 }
+    );
+  }
+}
+
 // Handle preflight requests for CORS
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     },
   });

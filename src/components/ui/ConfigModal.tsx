@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useFirebase } from '@/contexts/FirebaseContext';
 import { cn } from '@/lib/utils';
 import { Modal } from './Modal';
 import { 
@@ -15,9 +16,7 @@ import {
   EyeOff,
   Webhook,
   Globe,
-  Key,
-  AlertCircle,
-  Check
+  Key
 } from 'lucide-react';
 import { WebhookConfig } from '@/types/config';
 
@@ -29,12 +28,23 @@ interface ConfigModalProps {
 export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
   const { theme } = useTheme();
   const { store, createDefaultWebhook } = useConfig();
+  
+  // Feature flag: Switch between Firebase and Redux
+  const USE_FIREBASE = true; // Set to false to use Redux instead
+  
+  const firebase = useFirebase();
+  
+  // Use Firebase or Redux based on feature flag
+  const webhooks = USE_FIREBASE ? firebase.webhooks : store.webhooks;
+  const activeWebhookId = USE_FIREBASE ? firebase.activeWebhook?.id : store.activeWebhookId;
+  
   const [activeTab, setActiveTab] = useState<'webhooks' | 'general'>('webhooks');
   const [editingWebhook, setEditingWebhook] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
   const [showSecrets, setShowSecrets] = useState<{ [key: string]: boolean }>({});
-  const [testingConnection, setTestingConnection] = useState<string | null>(null);
-  const [connectionResults, setConnectionResults] = useState<{ [key: string]: boolean | null }>({});
+  const [saving, setSaving] = useState(false);
+  const [testingWebhooks, setTestingWebhooks] = useState<{ [key: string]: boolean }>({});
+  const [testResults, setTestResults] = useState<{ [key: string]: 'success' | 'error' | null }>({});
 
   // Form state for editing
   const [formData, setFormData] = useState({
@@ -59,15 +69,27 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
       });
     } else if (editingWebhook) {
       // Edit existing webhook
-      const webhook = store.webhooks.find(w => w.id === editingWebhook);
+      const webhook = webhooks.find(w => w.id === editingWebhook);
       if (webhook) {
-        setFormData({
-          name: webhook.name,
-          url: webhook.url,
-          apiSecret: webhook.apiSecret || '',
-          description: webhook.metadata?.description || '',
-          color: webhook.metadata?.color || '#3b82f6',
-        });
+        if (USE_FIREBASE) {
+          // Firebase webhook structure
+          setFormData({
+            name: webhook.name,
+            url: webhook.url,
+            apiSecret: webhook.secret || '',
+            description: '', // Firebase doesn't store description
+            color: '#3b82f6', // Firebase doesn't store color
+          });
+        } else {
+          // Redux webhook structure
+          setFormData({
+            name: webhook.name,
+            url: webhook.url,
+            apiSecret: webhook.apiSecret || '',
+            description: webhook.metadata?.description || '',
+            color: webhook.metadata?.color || '#3b82f6',
+          });
+        }
       }
     } else {
       // No webhook being edited
@@ -80,7 +102,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
       });
     }
     setErrors({});
-  }, [editingWebhook, store.webhooks]);
+  }, [editingWebhook, webhooks, USE_FIREBASE]);
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -102,30 +124,98 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validateForm()) return;
+    
+    setSaving(true);
+    try {
+      if (USE_FIREBASE) {
+        // Ensure user is signed in first
+        if (!firebase.isSignedIn) {
+          console.log('User not signed in, signing in with Google...');
+          await firebase.signInWithGoogle();
+          // Wait a bit for auth state to propagate
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Verify user is now signed in
+          if (!firebase.user) {
+            throw new Error('Failed to sign in user. Please try again.');
+          }
+        }
+        
+        console.log('User authenticated:', { userId: firebase.user?.uid, userProfile: !!firebase.userProfile });
+        
+        // Ensure user profile exists
+        if (!firebase.userProfile) {
+          console.log('User profile not loaded, waiting for it to be created...');
+          // Wait up to 3 seconds for user profile to be created
+          for (let i = 0; i < 6; i++) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            if (firebase.userProfile) {
+              console.log('User profile now available');
+              break;
+            }
+            console.log(`Waiting for user profile... attempt ${i + 1}/6`);
+          }
+          
+          if (!firebase.userProfile) {
+            throw new Error('User profile could not be created. Please refresh the page and try again.');
+          }
+        }
+        
+        // Firebase webhook management
+        const secret = formData.apiSecret.trim() || undefined;
+        
+        if (editingWebhook === 'new') {
+          console.log('Creating new webhook:', { name: formData.name.trim(), url: formData.url.trim(), secret });
+          const newWebhook = await firebase.addWebhook(
+            formData.name.trim(),
+            formData.url.trim(),
+            secret
+          );
+          console.log('New webhook created:', newWebhook);
+          
+          // Note: setActiveWebhook is handled inside addWebhook function
+          // No need to call it again here to avoid overwriting the webhooks array
+        } else if (editingWebhook) {
+          console.log('Updating webhook:', editingWebhook);
+          await firebase.updateWebhook(editingWebhook, {
+            name: formData.name.trim(),
+            url: formData.url.trim(),
+            secret,
+            isActive: true, // Maintain active status
+          });
+        }
+      } else {
+        // Redux webhook management
+        const webhookData = {
+          name: formData.name.trim(),
+          url: formData.url.trim(),
+          apiSecret: formData.apiSecret.trim() || undefined,
+          metadata: {
+            description: formData.description.trim() || undefined,
+            color: formData.color,
+          },
+        };
 
-    const webhookData = {
-      name: formData.name.trim(),
-      url: formData.url.trim(),
-      apiSecret: formData.apiSecret.trim() || undefined,
-      metadata: {
-        description: formData.description.trim() || undefined,
-        color: formData.color,
-      },
-    };
-
-    if (editingWebhook === 'new') {
-      const newWebhook = store.addWebhook(webhookData);
-      // Set as active if there's no currently active webhook
-      if (!store.activeWebhookId) {
-        store.setActiveWebhook(newWebhook.id);
+        if (editingWebhook === 'new') {
+          const newWebhook = store.addWebhook(webhookData);
+          // Set as active if there's no currently active webhook
+          if (!store.activeWebhookId) {
+            store.setActiveWebhook(newWebhook.id);
+          }
+        } else if (editingWebhook) {
+          store.updateWebhook(editingWebhook, webhookData);
+        }
       }
-    } else if (editingWebhook) {
-      store.updateWebhook(editingWebhook, webhookData);
-    }
 
-    setEditingWebhook(null);
+      setEditingWebhook(null);
+    } catch (error) {
+      console.error('Error saving webhook:', error);
+      alert(`Error saving webhook: ${error.message || error}`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -133,41 +223,52 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
     setErrors({});
   };
 
-  const handleDelete = (webhookId: string) => {
-    store.deleteWebhook(webhookId);
-    setShowDeleteModal(null);
+  const handleDelete = async (webhookId: string) => {
+    try {
+      if (USE_FIREBASE) {
+        await firebase.deleteWebhook(webhookId);
+      } else {
+        store.deleteWebhook(webhookId);
+      }
+      setShowDeleteModal(null);
+    } catch (error) {
+      console.error('Error deleting webhook:', error);
+      // Could add error state here if needed
+    }
   };
 
-  const testConnection = async (webhook: WebhookConfig) => {
-    setTestingConnection(webhook.id);
-    setConnectionResults(prev => ({ ...prev, [webhook.id]: null }));
+
+  const toggleSecretVisibility = (webhookId: string) => {
+    setShowSecrets(prev => ({ ...prev, [webhookId]: !prev[webhookId] }));
+  };
+
+  const testWebhookConnection = async (webhook: any) => {
+    setTestingWebhooks(prev => ({ ...prev, [webhook.id]: true }));
+    setTestResults(prev => ({ ...prev, [webhook.id]: null }));
 
     try {
-      // Test the specific webhook by sending a test POST request through our API
-      const response = await fetch('/api/test-webhook', {
+      const response = await fetch('/api/health', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           url: webhook.url,
-          secret: webhook.apiSecret,
-          healthCheck: true, // Flag to indicate this is a health check
+          secret: USE_FIREBASE ? webhook.secret : webhook.apiSecret,
         }),
       });
-      
-      const data = await response.json();
-      const isConnected = response.ok && data.success === true;
-      setConnectionResults(prev => ({ ...prev, [webhook.id]: isConnected }));
-    } catch (error) {
-      setConnectionResults(prev => ({ ...prev, [webhook.id]: false }));
-    } finally {
-      setTestingConnection(null);
-    }
-  };
 
-  const toggleSecretVisibility = (webhookId: string) => {
-    setShowSecrets(prev => ({ ...prev, [webhookId]: !prev[webhookId] }));
+      if (response.ok) {
+        setTestResults(prev => ({ ...prev, [webhook.id]: 'success' }));
+      } else {
+        setTestResults(prev => ({ ...prev, [webhook.id]: 'error' }));
+      }
+    } catch (error) {
+      console.error('Error testing webhook:', error);
+      setTestResults(prev => ({ ...prev, [webhook.id]: 'error' }));
+    } finally {
+      setTestingWebhooks(prev => ({ ...prev, [webhook.id]: false }));
+    }
   };
 
   return (
@@ -235,7 +336,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
 
                 {/* Webhook List */}
                 <div className="space-y-6">
-                  {store.webhooks.map((webhook) => (
+                  {webhooks.map((webhook) => (
                     <div
                       key={webhook.id}
                       className="border border-slate-200 dark:border-slate-700 rounded-lg p-6 bg-white dark:bg-slate-800"
@@ -245,7 +346,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                           <div className="flex items-center space-x-3">
                             <div
                               className="w-3 h-3 rounded-full"
-                              style={{ backgroundColor: webhook.metadata?.color || '#3b82f6' }}
+                              style={{ backgroundColor: USE_FIREBASE ? '#3b82f6' : (webhook.metadata?.color || '#3b82f6') }}
                             />
                             <div 
                               style={{ 
@@ -263,7 +364,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                             >
                               {webhook.name}
                             </div>
-                            {webhook.isActive && (
+                            {((USE_FIREBASE && webhook.id === activeWebhookId) || (!USE_FIREBASE && webhook.isActive)) && (
                               <span className="px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-full">
                                 Active
                               </span>
@@ -276,11 +377,14 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                               <span className="font-mono truncate" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}>{webhook.url}</span>
                             </div>
                             
-                            {webhook.apiSecret && (
+                            {((USE_FIREBASE && webhook.secret) || (!USE_FIREBASE && webhook.apiSecret)) && (
                               <div className="flex items-center text-sm">
                                 <Key className="w-4 h-4 mr-2" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }} />
                                 <span className="font-mono" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}>
-                                  {showSecrets[webhook.id] ? webhook.apiSecret : '••••••••••••••••'}
+                                  {showSecrets[webhook.id] ? 
+                                    (USE_FIREBASE ? webhook.secret : webhook.apiSecret) : 
+                                    '••••••••••••••••'
+                                  }
                                 </span>
                                 <button
                                   onClick={() => toggleSecretVisibility(webhook.id)}
@@ -295,7 +399,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                               </div>
                             )}
                             
-                            {webhook.metadata?.description && (
+                            {!USE_FIREBASE && webhook.metadata?.description && (
                               <p className="text-sm" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}>
                                 {webhook.metadata.description}
                               </p>
@@ -305,9 +409,15 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
 
                         <div className="flex items-center space-x-2 ml-4">
                           {/* Activate/Deactivate Button */}
-                          {!webhook.isActive && (
+                          {((USE_FIREBASE && webhook.id !== activeWebhookId) || (!USE_FIREBASE && !webhook.isActive)) && (
                             <button
-                              onClick={() => store.setActiveWebhook(webhook.id)}
+                              onClick={() => {
+                                if (USE_FIREBASE) {
+                                  firebase.setActiveWebhook(webhook.id);
+                                } else {
+                                  store.setActiveWebhook(webhook.id);
+                                }
+                              }}
                               className="px-3 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
                               title="Set as Active Webhook"
                             >
@@ -315,27 +425,33 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                             </button>
                           )}
                           
-                          {/* Connection Test */}
+                          {/* Test Connection Button */}
                           <button
-                            onClick={() => testConnection(webhook)}
-                            disabled={testingConnection === webhook.id}
+                            onClick={() => testWebhookConnection(webhook)}
+                            disabled={testingWebhooks[webhook.id]}
                             className={cn(
-                              'p-2 rounded-lg transition-colors text-sm',
-                              connectionResults[webhook.id] === true && 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300',
-                              connectionResults[webhook.id] === false && 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300',
-                              connectionResults[webhook.id] === null && 'hover:bg-slate-100 dark:hover:bg-slate-700',
-                              testingConnection === webhook.id && 'opacity-50 cursor-not-allowed'
+                              "p-2 rounded-lg transition-colors",
+                              testingWebhooks[webhook.id] 
+                                ? "opacity-50 cursor-not-allowed" 
+                                : "hover:bg-slate-100 dark:hover:bg-slate-700",
+                              testResults[webhook.id] === 'success' && "bg-green-100 dark:bg-green-900",
+                              testResults[webhook.id] === 'error' && "bg-red-100 dark:bg-red-900"
                             )}
-                            title="Test Connection"
+                            title="Test Webhook Connection"
                           >
-                            {testingConnection === webhook.id ? (
-                              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                            ) : connectionResults[webhook.id] === true ? (
-                              <Check className="w-4 h-4" />
-                            ) : connectionResults[webhook.id] === false ? (
-                              <AlertCircle className="w-4 h-4" />
+                            {testingWebhooks[webhook.id] ? (
+                              <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
                             ) : (
-                              <Globe className="w-4 h-4" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }} />
+                              <Globe 
+                                className="w-4 h-4" 
+                                style={{ 
+                                  color: testResults[webhook.id] === 'success' 
+                                    ? '#10b981' 
+                                    : testResults[webhook.id] === 'error' 
+                                      ? '#ef4444' 
+                                      : theme === 'light' ? '#374151' : '#94a3b8' 
+                                }} 
+                              />
                             )}
                           </button>
 
@@ -359,7 +475,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                     </div>
                   ))}
 
-                  {store.webhooks.length === 0 && (
+                  {webhooks.length === 0 && (
                     <div className="text-center py-12">
                       <Webhook className="w-12 h-12 mx-auto mb-4 opacity-50" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
                       <h4 className="text-lg font-medium mb-2" style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}>
@@ -530,10 +646,15 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
             </button>
             <button
               onClick={handleSave}
-              className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              disabled={saving}
+              className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Save className="w-4 h-4 mr-2" />
-              {editingWebhook === 'new' ? 'Add Webhook' : 'Save Changes'}
+              {saving ? (
+                <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              {saving ? 'Saving...' : (editingWebhook === 'new' ? 'Add Webhook' : 'Save Changes')}
             </button>
           </div>
         </div>

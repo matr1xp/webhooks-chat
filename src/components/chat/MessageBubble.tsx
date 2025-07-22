@@ -3,7 +3,8 @@
 import { Message } from '@/types/chat';
 import { formatTimestamp, cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Check, CheckCheck, X, Clock } from 'lucide-react';
+import { useFirebase } from '@/contexts/FirebaseContext';
+import { Check, CheckCheck, X, Clock, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -14,6 +15,7 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ message, isUser }: MessageBubbleProps) {
   const { theme } = useTheme();
+  const { user } = useFirebase();
   // Determine if this is a user message (default to true if not explicitly set)
   const actualIsUser = isUser !== undefined ? isUser : !message.isBot;
 
@@ -89,8 +91,25 @@ export function MessageBubble({ message, isUser }: MessageBubbleProps) {
           </div>
 
           {/* User avatar */}
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center flex-shrink-0 shadow-lg ring-2 ring-white ring-opacity-20">
-            <span className="text-white text-sm font-medium">👤</span>
+          <div className="relative flex-shrink-0">
+            <div className={cn(
+              "w-9 h-9 rounded-full flex items-center justify-center shadow-lg ring-2 ring-white ring-opacity-20",
+              user?.photoURL && !user.isAnonymous 
+                ? "border-2 border-emerald-400" 
+                : "bg-gradient-to-br from-emerald-400 to-emerald-600"
+            )}>
+              {user?.photoURL && !user.isAnonymous ? (
+                <img
+                  src={user.photoURL}
+                  alt={user.displayName || 'User'}
+                  className="w-9 h-9 rounded-full"
+                />
+              ) : user?.isAnonymous ? (
+                <span className="text-white text-sm font-medium">👤</span>
+              ) : (
+                <User className="w-4 h-4 text-white" />
+              )}
+            </div>
           </div>
         </div>
       )}

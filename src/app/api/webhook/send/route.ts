@@ -86,74 +86,44 @@ export async function POST(request: NextRequest) {
       });
 
 
-      // Extract bot message from n8n response
+      // Extract bot message from n8n response - flexible parsing
       let botMessage;
-      if (response.data) {
-        // Handle array responses (e.g., [{ "summary": "text" }])
-        if (Array.isArray(response.data) && response.data.length > 0) {
-          const firstItem = response.data[0];
-          if (firstItem.summary) {
-            botMessage = {
-              content: firstItem.summary,
-              type: firstItem.type || 'text' as const,
-              metadata: firstItem.metadata,
-            };
-          } else if (firstItem.message) {
-            botMessage = {
-              content: firstItem.message,
-              type: firstItem.type || 'text' as const,
-              metadata: firstItem.metadata,
-            };
-          } else if (firstItem.response) {
-            botMessage = {
-              content: firstItem.response,
-              type: firstItem.type || 'text' as const,
-              metadata: firstItem.metadata,
-            };
-          } else if (firstItem.content) {
-            botMessage = {
-              content: firstItem.content,
-              type: firstItem.type || 'text' as const,
-              metadata: firstItem.metadata,
-            };
-          } else if (typeof firstItem === 'string') {
-            botMessage = {
-              content: firstItem,
-              type: 'text' as const,
-            };
+      
+      const extractStringValue = (obj: any): string | null => {
+        if (typeof obj === 'string') {
+          return obj;
+        }
+        
+        if (typeof obj === 'object' && obj !== null) {
+          // Look for any string value in the object
+          for (const [key, value] of Object.entries(obj)) {
+            if (typeof value === 'string' && value.trim().length > 0) {
+              console.log(`📝 Extracted bot response from key "${key}":`, value);
+              return value;
+            }
           }
         }
-        // Handle direct string response
-        else if (typeof response.data === 'string') {
+        
+        return null;
+      };
+
+      if (response.data) {
+        let extractedContent: string | null = null;
+        
+        // Handle array responses (e.g., [{ "key": "string value" }])
+        if (Array.isArray(response.data) && response.data.length > 0) {
+          extractedContent = extractStringValue(response.data[0]);
+        }
+        // Handle direct responses
+        else {
+          extractedContent = extractStringValue(response.data);
+        }
+        
+        if (extractedContent) {
           botMessage = {
-            content: response.data,
+            content: extractedContent,
             type: 'text' as const,
-          };
-        } 
-        // Handle object responses
-        else if (response.data.summary) {
-          botMessage = {
-            content: response.data.summary,
-            type: response.data.type || 'text' as const,
-            metadata: response.data.metadata,
-          };
-        } else if (response.data.message) {
-          botMessage = {
-            content: response.data.message,
-            type: response.data.type || 'text' as const,
-            metadata: response.data.metadata,
-          };
-        } else if (response.data.response) {
-          botMessage = {
-            content: response.data.response,
-            type: response.data.type || 'text' as const,
-            metadata: response.data.metadata,
-          };
-        } else if (response.data.content) {
-          botMessage = {
-            content: response.data.content,
-            type: response.data.type || 'text' as const,
-            metadata: response.data.metadata,
+            metadata: { originalResponse: response.data },
           };
         }
       }

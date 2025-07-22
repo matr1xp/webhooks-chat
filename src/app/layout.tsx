@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { ConfigProvider } from '@/contexts/ConfigContext'
 import { ReduxProvider } from '@/providers/ReduxProvider'
+import { FirebaseProvider } from '@/contexts/FirebaseContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -22,15 +23,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ReduxProvider>
-          <ThemeProvider>
-            <ConfigProvider>
-              <div className="min-h-screen">
-                {children}
-              </div>
-            </ConfigProvider>
-          </ThemeProvider>
-        </ReduxProvider>
+        <FirebaseProvider>
+          <ReduxProvider>
+            <ThemeProvider>
+              <ConfigProvider>
+                <div className="min-h-screen">
+                  {children}
+                </div>
+              </ConfigProvider>
+            </ThemeProvider>
+          </ReduxProvider>
+        </FirebaseProvider>
       </body>
     </html>
   )

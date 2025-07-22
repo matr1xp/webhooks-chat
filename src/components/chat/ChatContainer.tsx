@@ -7,6 +7,8 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useChatStore } from '@/hooks/useReduxChat';
+import { useFirebaseChat } from '@/hooks/useFirebaseChat';
+import { useFirebase } from '@/contexts/FirebaseContext';
 import { webhookClient } from '@/lib/webhook-client';
 import { WebhookPayload } from '@/types/chat';
 import { generateSessionId, generateUserId, sanitizeInput } from '@/lib/utils';
@@ -20,6 +22,15 @@ interface ChatContainerProps {
 export function ChatContainer({ className }: ChatContainerProps) {
   const { theme } = useTheme();
   const { store } = useConfig();
+  
+  // Feature flag: Switch between Firebase and Redux
+  const USE_FIREBASE = true; // Set to false to use Redux instead
+  
+  const reduxChat = useChatStore();
+  const firebaseChat = useFirebaseChat();
+  const firebase = useFirebase();
+  
+  // Use Firebase or Redux based on feature flag
   const {
     messages,
     isLoading,
@@ -30,42 +41,69 @@ export function ChatContainer({ className }: ChatContainerProps) {
     setError,
     setCurrentSession,
     getMessagesForSession,
-  } = useChatStore();
+  } = USE_FIREBASE ? firebaseChat : reduxChat;
+
 
   const [userId] = useState(() => generateUserId());
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const isInitialized = useRef(false);
 
-  // Get active webhook and chat
-  const activeWebhook = store?.getActiveWebhook();
-  const activeChat = store?.getActiveChat();
+  // Get active webhook and chat - use Firebase or Redux based on feature flag
+  const rawActiveWebhook = USE_FIREBASE ? firebase.activeWebhook : store?.getActiveWebhook();
+  
+  // Convert Firebase webhook format to WebhookConfig format for webhook client
+  const activeWebhook = rawActiveWebhook ? (USE_FIREBASE ? {
+    id: rawActiveWebhook.id,
+    name: rawActiveWebhook.name,
+    url: rawActiveWebhook.url,
+    apiSecret: (rawActiveWebhook as any).secret, // Convert 'secret' to 'apiSecret'
+    isActive: rawActiveWebhook.isActive,
+    createdAt: (rawActiveWebhook as any).createdAt?.toDate ? 
+      (rawActiveWebhook as any).createdAt.toDate().toISOString() : 
+      (rawActiveWebhook as any).createdAt, // Convert Timestamp to string
+  } : rawActiveWebhook) : null;
+  
+  const activeChat = USE_FIREBASE ? firebase.activeChat : store?.getActiveChat();
 
   // Set current session when active chat changes
   useEffect(() => {
-    if (activeChat?.sessionId) {
-      setCurrentSession(activeChat.sessionId);
+    if (USE_FIREBASE) {
+      // Firebase chat uses id as session
+      if (activeChat?.id) {
+        setCurrentSession(activeChat.id);
+      } else {
+        setCurrentSession(null);
+      }
     } else {
-      // Clear session when no active chat
-      setCurrentSession(null);
-    }
-  }, [activeChat?.sessionId, setCurrentSession]);
-
-  // Update message count when messages change
-  useEffect(() => {
-    if (activeChat?.sessionId) {
-      const currentMessageCount = messages.length;
-      const storedMessageCount = activeChat.messageCount;
-      
-      // Only update if the count is different to avoid unnecessary updates
-      if (currentMessageCount !== storedMessageCount) {
-        store.updateChat(activeChat.id, {
-          messageCount: currentMessageCount,
-          lastActivity: new Date().toISOString(),
-        });
+      // Redux chat uses sessionId
+      const reduxChat = activeChat as any;
+      if (reduxChat?.sessionId) {
+        setCurrentSession(reduxChat.sessionId);
+      } else {
+        setCurrentSession(null);
       }
     }
-  }, [messages.length, activeChat?.id, activeChat?.sessionId, activeChat?.messageCount, store]);
+  }, [USE_FIREBASE, activeChat?.id, setCurrentSession]);
+
+  // Update message count when messages change (Redux only - Firebase handles this automatically)
+  useEffect(() => {
+    if (!USE_FIREBASE && activeChat) {
+      const reduxChat = activeChat as any;
+      if (reduxChat?.sessionId) {
+        const currentMessageCount = messages.length;
+        const storedMessageCount = reduxChat.messageCount;
+        
+        // Only update if the count is different to avoid unnecessary updates
+        if (currentMessageCount !== storedMessageCount) {
+          store.updateChat(activeChat.id, {
+            messageCount: currentMessageCount,
+            lastActivity: new Date().toISOString(),
+          });
+        }
+      }
+    }
+  }, [USE_FIREBASE, messages.length, activeChat?.id, store]);
 
   // Check webhook health
   useEffect(() => {
@@ -108,6 +146,13 @@ export function ChatContainer({ className }: ChatContainerProps) {
       setError('No active webhook or chat configured. Please configure a webhook and select a chat.');
       return;
     }
+    
+    // Additional validation for Firebase mode
+    if (USE_FIREBASE && (!activeChat.id || activeChat.id.trim() === '')) {
+      setError('Active chat has invalid ID. Please refresh and try again.');
+      console.error('Active chat has empty ID:', activeChat);
+      return;
+    }
 
     try {
       setError(null);
@@ -118,8 +163,9 @@ export function ChatContainer({ className }: ChatContainerProps) {
       if (!sanitizedContent) return;
 
       // Add message to local state immediately (optimistic update)
-      const message = addMessage({
-        sessionId: activeChat.sessionId,
+      const sessionId = USE_FIREBASE ? activeChat.id : (activeChat as any).sessionId;
+      const message = await addMessage({
+        sessionId,
         userId,
         type,
         content: sanitizedContent,
@@ -131,7 +177,7 @@ export function ChatContainer({ className }: ChatContainerProps) {
 
       // Prepare webhook payload
       const payload: WebhookPayload = {
-        sessionId: activeChat.sessionId,
+        sessionId,
         messageId: message.id,
         timestamp: message.timestamp,
         user: {
@@ -151,23 +197,55 @@ export function ChatContainer({ className }: ChatContainerProps) {
 
       // Send to webhook directly - no queueing
       try {
+        console.log('📡 Sending message to webhook:', {
+          webhookUrl: activeWebhook?.url,
+          messageContent: payload.message.content
+        });
+        
         const response = await webhookClient.sendMessage(payload, activeWebhook);
+        
+        console.log('📡 Webhook response received:', {
+          success: response.success,
+          hasBotMessage: !!response.botMessage,
+          botMessageContent: response.botMessage?.content,
+          rawResponse: response
+        });
         
         if (response.success) {
           updateMessageStatus(message.id, 'delivered');
           
           // Add bot response message if available
           if (response.botMessage && response.botMessage.content) {
-            const botMessage = addMessage({
-              sessionId: activeChat.sessionId,
-              userId: 'bot', // Special bot user ID
-              type: response.botMessage.type || 'text',
+            console.log('🤖 Adding bot message:', {
               content: response.botMessage.content,
-              isBot: true,
-              metadata: response.botMessage.metadata,
+              isFirebase: USE_FIREBASE
             });
-            // Bot messages are always delivered
-            updateMessageStatus(botMessage.id, 'delivered');
+            
+            if (USE_FIREBASE) {
+              // Use Firebase bot message method
+              const botMessage = await firebase.addBotMessage(
+                response.botMessage.content,
+                response.botMessage.metadata
+              );
+              console.log('🤖 Firebase bot message created:', {
+                id: botMessage.id,
+                isBot: botMessage.isBot,
+                userId: botMessage.userId,
+                content: botMessage.content
+              });
+            } else {
+              // Use Redux method
+              const botMessage = await addMessage({
+                sessionId,
+                userId: 'bot', // Special bot user ID
+                type: response.botMessage.type || 'text',
+                content: response.botMessage.content,
+                isBot: true,
+                metadata: response.botMessage.metadata,
+              });
+              // Bot messages are always delivered
+              updateMessageStatus(botMessage.id, 'delivered');
+            }
             
             // Message count will be updated automatically by useEffect
           }
