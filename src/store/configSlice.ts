@@ -19,7 +19,7 @@ function createDefaultWebhook(): WebhookConfig | null {
       id: uuidv4(),
       name: 'Default Webhook',
       url: webhookUrl,
-      apiSecret: webhookSecret,
+      apiSecret: webhookSecret || undefined,
       isActive: true,
       createdAt: new Date().toISOString(),
       metadata: {

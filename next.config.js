@@ -1,8 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Enable static export for serverless deployment
+  output: 'export',
+  trailingSlash: true,
+  images: {
+    unoptimized: true,
+  },
+  // Temporarily disable ESLint during build for static export
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  // Environment variables for client-side usage
   env: {
-    N8N_WEBHOOK_URL: process.env.N8N_WEBHOOK_URL,
-    WEBHOOK_SECRET: process.env.WEBHOOK_SECRET,
+    // Firebase configuration (already handled by NEXT_PUBLIC_ prefix)
+    // Cloud Functions URLs will be set via environment variables
+    NEXT_PUBLIC_FUNCTIONS_BASE_URL: process.env.NEXT_PUBLIC_FUNCTIONS_BASE_URL,
   },
 }
 

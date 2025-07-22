@@ -43,7 +43,7 @@ export function FirebaseDebug() {
 
       <div className="mt-4 p-3 bg-yellow-100 dark:bg-yellow-900 rounded">
         <p className="text-sm">
-          <strong>Note:</strong> All values should show data, not "❌ Missing". 
+          <strong>Note:</strong> All values should show data, not &quot;❌ Missing&quot;. 
           If any are missing, check your .env.local file and restart the dev server.
         </p>
       </div>

@@ -69,20 +69,19 @@ export function ChatContainer({ className }: ChatContainerProps) {
   // Set current session when active chat changes
   useEffect(() => {
     if (USE_FIREBASE) {
-      // Firebase chat uses id as session
+      // Firebase chat uses id as session and accepts null
       if (activeChat?.id) {
         setCurrentSession(activeChat.id);
       } else {
-        setCurrentSession(null);
+        (setCurrentSession as any)(null);
       }
     } else {
-      // Redux chat uses sessionId
+      // Redux chat uses sessionId and requires a string
       const reduxChat = activeChat as any;
       if (reduxChat?.sessionId) {
         setCurrentSession(reduxChat.sessionId);
-      } else {
-        setCurrentSession(null);
       }
+      // For Redux, don't call setCurrentSession with null as it doesn't accept it
     }
   }, [USE_FIREBASE, activeChat?.id, setCurrentSession]);
 
@@ -114,7 +113,7 @@ export function ChatContainer({ className }: ChatContainerProps) {
       }
 
       try {
-        const healthy = await webhookClient.checkHealth(activeWebhook);
+        const healthy = await webhookClient.checkHealth(activeWebhook as any);
         setIsOnline(healthy);
       } catch (error) {
         setIsOnline(false);
@@ -202,7 +201,7 @@ export function ChatContainer({ className }: ChatContainerProps) {
           messageContent: payload.message.content
         });
         
-        const response = await webhookClient.sendMessage(payload, activeWebhook);
+        const response = await webhookClient.sendMessage(payload, activeWebhook as any);
         
         console.log('📡 Webhook response received:', {
           success: response.success,

@@ -20,8 +20,11 @@ export default function Home() {
   // Feature flag: Switch between Firebase and Redux
   const USE_FIREBASE = true; // Set to false to use Redux instead
 
-  // Get Firebase authentication state
-  const { isSignedIn, authLoading } = USE_FIREBASE ? useFirebase() : { isSignedIn: true, authLoading: false };
+  // Always call useFirebase hook (Rules of Hooks requirement)
+  const firebase = useFirebase();
+  
+  // Get Firebase authentication state based on feature flag
+  const { isSignedIn, authLoading } = USE_FIREBASE ? firebase : { isSignedIn: true, authLoading: false };
 
   // Show loading spinner while checking authentication
   if (USE_FIREBASE && authLoading) {

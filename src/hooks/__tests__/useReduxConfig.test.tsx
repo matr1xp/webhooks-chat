@@ -73,9 +73,11 @@ const createTestStore = (initialState = {}) => {
 };
 
 const createWrapper = (store: any) => {
-  return ({ children }: { children: React.ReactNode }) => (
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
     <Provider store={store}>{children}</Provider>
   );
+  Wrapper.displayName = 'ConfigWrapper';
+  return Wrapper;
 };
 
 describe('useConfigStore', () => {

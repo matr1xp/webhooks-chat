@@ -7,6 +7,7 @@ export function FirebaseQuickSetup() {
   const {
     user,
     signInWithGoogle,
+    signInAnonymous,
     webhooks,
     activeWebhook,
     addWebhook,

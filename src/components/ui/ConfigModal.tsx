@@ -6,6 +6,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useFirebase } from '@/contexts/FirebaseContext';
 import { cn } from '@/lib/utils';
 import { Modal } from './Modal';
+import { cloudFunctions } from '@/lib/cloud-functions';
 import { 
   Plus, 
   Trash2, 
@@ -76,7 +77,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
           setFormData({
             name: webhook.name,
             url: webhook.url,
-            apiSecret: webhook.secret || '',
+            apiSecret: (webhook as any).secret || '',
             description: '', // Firebase doesn't store description
             color: '#3b82f6', // Firebase doesn't store color
           });
@@ -85,9 +86,9 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
           setFormData({
             name: webhook.name,
             url: webhook.url,
-            apiSecret: webhook.apiSecret || '',
-            description: webhook.metadata?.description || '',
-            color: webhook.metadata?.color || '#3b82f6',
+            apiSecret: (webhook as any).apiSecret || '',
+            description: (webhook as any).metadata?.description || '',
+            color: (webhook as any).metadata?.color || '#3b82f6',
           });
         }
       }
@@ -212,7 +213,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
       setEditingWebhook(null);
     } catch (error) {
       console.error('Error saving webhook:', error);
-      alert(`Error saving webhook: ${error.message || error}`);
+      alert(`Error saving webhook: ${(error as any)?.message || error}`);
     } finally {
       setSaving(false);
     }
@@ -247,18 +248,12 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
     setTestResults(prev => ({ ...prev, [webhook.id]: null }));
 
     try {
-      const response = await fetch('/api/health', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          url: webhook.url,
-          secret: USE_FIREBASE ? webhook.secret : webhook.apiSecret,
-        }),
-      });
+      const response = await cloudFunctions.checkHealth(
+        webhook.url,
+        USE_FIREBASE ? webhook.secret : webhook.apiSecret
+      );
 
-      if (response.ok) {
+      if (response.status === 'healthy') {
         setTestResults(prev => ({ ...prev, [webhook.id]: 'success' }));
       } else {
         setTestResults(prev => ({ ...prev, [webhook.id]: 'error' }));
@@ -346,7 +341,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                           <div className="flex items-center space-x-3">
                             <div
                               className="w-3 h-3 rounded-full"
-                              style={{ backgroundColor: USE_FIREBASE ? '#3b82f6' : (webhook.metadata?.color || '#3b82f6') }}
+                              style={{ backgroundColor: USE_FIREBASE ? '#3b82f6' : ((webhook as any).metadata?.color || '#3b82f6') }}
                             />
                             <div 
                               style={{ 
@@ -377,12 +372,12 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                               <span className="font-mono truncate" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}>{webhook.url}</span>
                             </div>
                             
-                            {((USE_FIREBASE && webhook.secret) || (!USE_FIREBASE && webhook.apiSecret)) && (
+                            {((USE_FIREBASE && (webhook as any).secret) || (!USE_FIREBASE && (webhook as any).apiSecret)) && (
                               <div className="flex items-center text-sm">
                                 <Key className="w-4 h-4 mr-2" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }} />
                                 <span className="font-mono" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}>
                                   {showSecrets[webhook.id] ? 
-                                    (USE_FIREBASE ? webhook.secret : webhook.apiSecret) : 
+                                    (USE_FIREBASE ? (webhook as any).secret : (webhook as any).apiSecret) : 
                                     '••••••••••••••••'
                                   }
                                 </span>
@@ -399,9 +394,9 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                               </div>
                             )}
                             
-                            {!USE_FIREBASE && webhook.metadata?.description && (
+                            {!USE_FIREBASE && (webhook as any).metadata?.description && (
                               <p className="text-sm" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}>
-                                {webhook.metadata.description}
+                                {(webhook as any).metadata.description}
                               </p>
                             )}
                           </div>

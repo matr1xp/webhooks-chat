@@ -292,7 +292,7 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
                           {chat.messageCount} messages
                         </span>
                         <span className="text-xs" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>
-                          {formatTimeAgo(chat.lastActivity)}
+                          {formatTimeAgo(typeof chat.lastActivity === 'string' ? chat.lastActivity : chat.lastActivity.toDate?.()?.toISOString() || chat.lastActivity.toString())}
                         </span>
                       </div>
                     </div>
