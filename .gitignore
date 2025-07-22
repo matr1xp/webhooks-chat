@@ -9,3 +9,6 @@ node_modules
 CLAUDE.md
 .claude/*
 .mcp.json
+
+# Test coverage reports
+coverage/

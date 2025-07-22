@@ -6,6 +6,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useSelector } from 'react-redux';
 import { selectActiveWebhook, selectActiveChat, selectChatsForWebhook } from '@/store/configSelectors';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 import { 
   MessageSquare, 
   Plus, 
@@ -105,9 +106,19 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
           <div className="flex items-center justify-between">
             {!isCollapsed && (
               <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-semibold truncate" style={{ color: '#f1f5f9' }}>
-                  Chats
-                </h2>
+                <div className="flex items-center space-x-2">
+                  <Image
+                    src="/logo.png"
+                    alt="Webn8 Logo"
+                    width={24}
+                    height={24}
+                    className="flex-shrink-0"
+                    style={{ width: 'auto', height: '24px' }}
+                  />
+                  <h2 className="text-lg font-semibold truncate" style={{ color: '#f1f5f9' }}>
+                    WebhookIQ
+                  </h2>
+                </div>
                 {activeWebhook && (
                   <div className="flex items-center mt-1 text-xs" style={{ color: '#94a3b8' }}>
                     <Webhook className="w-3 h-3 mr-1" />

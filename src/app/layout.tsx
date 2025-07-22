@@ -7,8 +7,11 @@ import { ReduxProvider } from '@/providers/ReduxProvider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: 'Chat Interface',
+  title: 'WebhookIQ',
   description: 'Chat interface for n8n webhook integration',
+  icons: {
+    icon: '/favicon.ico',
+  },
 }
 
 export default function RootLayout({
