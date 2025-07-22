@@ -61,12 +61,12 @@ function validateEnvironmentVariables() {
     const content = fs.readFileSync(jsFile, 'utf-8');
     for (const envVar of REQUIRED_ENV_VARS) {
       // Look for the actual value, not the variable name
-      if (content.includes('***REMOVED***') || 
+      if (content.includes('firebaseapp.com') || 
           content.includes('***REMOVED***') ||
-          content.includes('***REMOVED***')) {
+          content.includes('cloudfunctions.net')) {
         envVarsFound.add('firebase_config');
       }
-      if (content.includes('***REMOVED***')) {
+      if (content.includes('run.app') || content.includes('cloudfunctions.net')) {
         envVarsFound.add('cloud_functions');
       }
     }
@@ -184,7 +184,7 @@ function main() {
     // Print deployment summary
     console.log('📋 Deployment Summary:');
     console.log(`   - Build directory: ${BUILD_DIR}`);
-    console.log(`   - Firebase project: ***REMOVED***`);
+    console.log(`   - Firebase project: <PROJECT_ID>`);
     console.log(`   - Cloud Functions: 3 functions deployed`);
     console.log(`   - Environment: Production ready`);
     
