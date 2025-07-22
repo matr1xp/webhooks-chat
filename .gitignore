@@ -5,6 +5,18 @@ out/
 # Environment variables (exclude example file)
 .env.*
 !.env.example
+functions/.env
+functions/.env.*
+!functions/.env.example
+
+# Security files
+secrets.txt
+secrets-to-remove.txt
+*.key
+*.pem
+*.p12
+*.pfx
+config.json
 
 ***REMOVED***
 CLAUDE.md
