@@ -1,3 +1,7 @@
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Enable static export for serverless deployment
@@ -6,6 +10,10 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Build optimizations
+  compress: true,
+  poweredByHeader: false,
+  generateEtags: true,
   // Temporarily disable ESLint during build for static export
   eslint: {
     ignoreDuringBuilds: true,
@@ -16,6 +24,10 @@ const nextConfig = {
     // Cloud Functions URLs will be set via environment variables
     NEXT_PUBLIC_FUNCTIONS_BASE_URL: process.env.NEXT_PUBLIC_FUNCTIONS_BASE_URL,
   },
+  // Experimental optimizations
+  // experimental: {
+  //   optimizeCss: true,
+  // },
 }
 
-module.exports = nextConfig
+module.exports = withBundleAnalyzer(nextConfig)

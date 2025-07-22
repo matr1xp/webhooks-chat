@@ -7,12 +7,23 @@
     "dev": "NODE_OPTIONS='--no-deprecation' next dev --turbopack",
     "dev:verbose": "next dev",
     "build": "next build",
+    "build:static": "npm run lint && next build",
+    "build:static:full": "npm run type-check && npm run lint && next build",
+    "build:analyze": "ANALYZE=true next build",
     "start": "next start",
+    "serve": "npx serve out -p 3000",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "deploy:prepare": "npm run build:static && npm run deploy:optimize",
+    "deploy:optimize": "npm run deploy:compress && npm run deploy:validate",
+    "deploy:compress": "find out -name '*.html' -exec gzip -9 -k {} \\; && find out -name '*.css' -exec gzip -9 -k {} \\; && find out -name '*.js' -exec gzip -9 -k {} \\;",
+    "deploy:validate": "node scripts/validate-build.js",
+    "deploy:firebase": "npm run deploy:prepare && node scripts/deploy-firebase-hosting.js",
+    "deploy:netlify": "npm run deploy:prepare && node scripts/deploy-netlify.js",
+    "deploy:vercel": "npm run deploy:prepare && node scripts/deploy-vercel.js"
   },
   "keywords": [
     "chat",
@@ -50,6 +61,7 @@
     "zod": "^4.0.5"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^15.4.2",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
