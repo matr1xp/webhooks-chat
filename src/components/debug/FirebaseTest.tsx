@@ -12,6 +12,7 @@ export function FirebaseTest() {
     signInAnonymous, 
     addMessage,
     activeWebhook,
+    activeChat,
     webhooks,
     addWebhook 
   } = useFirebase();
@@ -67,7 +68,13 @@ export function FirebaseTest() {
       // Test message creation (only if we have an active webhook)
       if (activeWebhook) {
         addTestResult('💬 Creating test message...');
-        await addMessage('Hello Firestore! This is a test message.');
+        await addMessage({
+          sessionId: activeChat?.id || 'test-session',
+          userId: 'test-user',
+          type: 'text',
+          content: 'Hello Firestore! This is a test message.',
+          isBot: false
+        });
         addTestResult('✅ Test message created');
       } else {
         addTestResult('⚠️ No active webhook - skipping message test');
