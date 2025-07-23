@@ -28,6 +28,7 @@ coverage/
 
 # Firebase CLI cache and deployment artifacts
 .firebase/
+.firebaserc
 
 # TypeScript build info
 tsconfig.tsbuildinfo
