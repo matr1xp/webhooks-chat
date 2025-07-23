@@ -1,5 +1,78 @@
 @import "tailwindcss";
 
+/* Custom font declarations */
+@font-face {
+  font-family: 'Gail Rock';
+  src: url('/ttf/Gail-Rock-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Gail Rock';
+  src: url('/ttf/Gail-Rock-Thin.ttf') format('truetype');
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Gail Rock';
+  src: url('/ttf/Gail-Rock-Extralight.ttf') format('truetype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Gail Rock';
+  src: url('/ttf/Gail-Rock-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Gail Rock';
+  src: url('/ttf/Gail-Rock-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Gail Rock';
+  src: url('/ttf/Gail-Rock-Semibold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Gail Rock';
+  src: url('/ttf/Gail-Rock-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monoline';
+  src: url('/ttf/Monoline.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nordhead Typeface';
+  src: url('/ttf/Nordhead Typeface.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     /* Modern color palette */
@@ -52,6 +125,11 @@
     transition: background-color 0.3s ease, color 0.3s ease;
   }
   
+  /* Global header styles with Nordhead Typeface font */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Nordhead Typeface', sans-serif;
+  }
+  
   /* Light mode styles */
   .light body {
     @apply bg-gray-50 text-gray-900;
@@ -87,10 +165,12 @@
   
   .light .chat-header h1 {
     color: rgb(17 24 39); /* gray-900 */
+    font-family: 'Nordhead Typeface', sans-serif;
   }
   
   .light .chat-header p {
     color: rgb(55 65 81); /* gray-700 */
+    font-family: 'Nordhead Typeface', sans-serif;
   }
   
   .dark .chat-header {
@@ -99,38 +179,74 @@
   
   .dark .chat-header h1 {
     color: rgb(241 245 249); /* slate-100 */
+    font-family: 'Nordhead Typeface', sans-serif;
   }
   
   .dark .chat-header p {
     color: rgb(148 163 184); /* slate-400 */
+    font-family: 'Nordhead Typeface', sans-serif;
   }
   
   /* Theme-aware input */
   .light .chat-input {
     @apply bg-white/90 border-slate-200/60 text-slate-900;
+    font-family: 'Gail Rock', sans-serif;
+    font-weight: 500; /* Medium */
   }
   
   .dark .chat-input {
     @apply bg-slate-800/90 border-slate-600/60 text-slate-100;
+    font-family: 'Gail Rock', sans-serif;
+    font-weight: 500; /* Medium */
   }
   
   /* Force placeholder color with CSS variables */
   textarea[style*="--placeholder-color"]::placeholder {
     color: var(--placeholder-color) !important;
   }
+
+  /* Global input styles with Gail Rock Medium */
+  input[type="text"],
+  input[type="url"], 
+  input[type="password"],
+  input[type="email"],
+  input[type="color"],
+  textarea {
+    font-family: 'Gail Rock', sans-serif;
+    font-weight: 500; /* Medium */
+  }
+
+  /* Specific targeting for chat input textarea */
+  .chat-input textarea {
+    font-family: 'Gail Rock', sans-serif;
+    font-weight: 500; /* Medium */
+  }
+
+  /* Configuration modal inputs */
+  .modal input[type="text"],
+  .modal input[type="url"],
+  .modal input[type="password"],
+  .modal input[type="color"],
+  .modal textarea {
+    font-family: 'Gail Rock', sans-serif;
+    font-weight: 500; /* Medium */
+  }
   
   /* Theme-aware bot message */
   .light .bot-message {
     @apply bg-white border-slate-200/60 text-gray-900;
+    font-family: 'Gail Rock', sans-serif;
   }
   
   .dark .bot-message {
     @apply bg-slate-800 border-slate-600/60 text-slate-100;
+    font-family: 'Gail Rock', sans-serif;
   }
   
   /* High specificity bot message text */
   .light .bot-message .markdown-content {
     color: rgb(31 41 55); /* gray-800 */
+    font-family: 'Gail Rock', sans-serif;
   }
   
   .light .bot-message .markdown-content p {
@@ -153,23 +269,52 @@
   .light .bot-message .markdown-content h1,
   .light .bot-message .markdown-content h2 {
     color: rgb(17 24 39); /* gray-900 */
+    font-family: 'Gail Rock', sans-serif;
   }
   
   .light .bot-message .markdown-content h3 {
     color: rgb(31 41 55); /* gray-800 */
+    font-family: 'Gail Rock', sans-serif;
   }
   
   .dark .bot-message .markdown-content {
     color: rgb(241 245 249); /* slate-100 */
+    font-family: 'Gail Rock', sans-serif;
+  }
+
+  /* Dark mode markdown headers */
+  .dark .bot-message .markdown-content h1,
+  .dark .bot-message .markdown-content h2,
+  .dark .bot-message .markdown-content h3 {
+    font-family: 'Gail Rock', sans-serif;
+  }
+
+  /* Modal and component headers */
+  .modal h1,
+  .modal h2, 
+  .modal h3,
+  .modal h4 {
+    font-family: 'Nordhead Typeface', sans-serif;
+  }
+
+  /* Webhook names in configuration modal */
+  .webhook-name {
+    font-family: 'Nordhead Typeface', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
   }
   
   /* Theme-aware user message */
   .light .user-message {
     @apply bg-gradient-to-br from-blue-500 to-blue-600 text-white;
+    font-family: 'Gail Rock', sans-serif;
   }
   
   .dark .user-message {
     @apply bg-gradient-to-br from-indigo-500 to-purple-600 text-white;
+    font-family: 'Gail Rock', sans-serif;
   }
   
   /* Modern chat bubble styling */
@@ -177,6 +322,7 @@
     border-radius: var(--chat-bubble-radius);
     transform: translateZ(0);
     will-change: transform, box-shadow;
+    font-family: 'Gail Rock', sans-serif;
   }
   
   /* Enhanced focus states */

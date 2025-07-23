@@ -133,7 +133,6 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
       if (USE_FIREBASE) {
         // Ensure user is signed in first
         if (!firebase.isSignedIn) {
-          console.log('User not signed in, signing in with Google...');
           await firebase.signInWithGoogle();
           // Wait a bit for auth state to propagate
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -144,19 +143,15 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
           }
         }
         
-        console.log('User authenticated:', { userId: firebase.user?.uid, userProfile: !!firebase.userProfile });
         
         // Ensure user profile exists
         if (!firebase.userProfile) {
-          console.log('User profile not loaded, waiting for it to be created...');
           // Wait up to 3 seconds for user profile to be created
           for (let i = 0; i < 6; i++) {
             await new Promise(resolve => setTimeout(resolve, 500));
             if (firebase.userProfile) {
-              console.log('User profile now available');
               break;
             }
-            console.log(`Waiting for user profile... attempt ${i + 1}/6`);
           }
           
           if (!firebase.userProfile) {
@@ -168,18 +163,15 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
         const secret = formData.apiSecret.trim() || undefined;
         
         if (editingWebhook === 'new') {
-          console.log('Creating new webhook:', { name: formData.name.trim(), url: formData.url.trim(), secret });
           const newWebhook = await firebase.addWebhook(
             formData.name.trim(),
             formData.url.trim(),
             secret
           );
-          console.log('New webhook created:', newWebhook);
           
           // Note: setActiveWebhook is handled inside addWebhook function
           // No need to call it again here to avoid overwriting the webhooks array
         } else if (editingWebhook) {
-          console.log('Updating webhook:', editingWebhook);
           await firebase.updateWebhook(editingWebhook, {
             name: formData.name.trim(),
             url: formData.url.trim(),
@@ -212,7 +204,6 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
 
       setEditingWebhook(null);
     } catch (error) {
-      console.error('Error saving webhook:', error);
       alert(`Error saving webhook: ${(error as any)?.message || error}`);
     } finally {
       setSaving(false);
@@ -233,7 +224,6 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
       }
       setShowDeleteModal(null);
     } catch (error) {
-      console.error('Error deleting webhook:', error);
       // Could add error state here if needed
     }
   };
@@ -259,7 +249,6 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
         setTestResults(prev => ({ ...prev, [webhook.id]: 'error' }));
       }
     } catch (error) {
-      console.error('Error testing webhook:', error);
       setTestResults(prev => ({ ...prev, [webhook.id]: 'error' }));
     } finally {
       setTestingWebhooks(prev => ({ ...prev, [webhook.id]: false }));
@@ -344,17 +333,15 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                               style={{ backgroundColor: USE_FIREBASE ? '#3b82f6' : ((webhook as any).metadata?.color || '#3b82f6') }}
                             />
                             <div 
+                              className="webhook-name"
                               style={{ 
                                 color: '#ffffff',
-                                fontWeight: '600',
+                                fontWeight: '400',
                                 fontSize: '1rem',
-                                lineHeight: '1.5rem',
-                                margin: 0,
-                                padding: 0,
-                                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                                lineHeight: '1.2rem',
+                                backgroundColor: 'rgba(29, 9, 130, 0.5)',
                                 borderRadius: '4px',
-                                paddingLeft: '4px',
-                                paddingRight: '4px'
+                                padding: '4px 8px 0px 8px'
                               }}
                             >
                               {webhook.name}
