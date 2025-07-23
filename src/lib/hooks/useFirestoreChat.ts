@@ -188,11 +188,9 @@ export const useFirestoreChat = (
   ): Promise<void> => {
     if (!activeChat) return;
     if (!activeChat.id || activeChat.id.trim() === '') {
-      console.warn('Cannot update message: active chat ID is empty');
       return;
     }
     if (!messageId || messageId.trim() === '') {
-      console.warn('Cannot update message: message ID is empty');
       return;
     }
     
@@ -211,7 +209,6 @@ export const useFirestoreChat = (
     
     // Clear state if user signs out
     if (!userId) {
-      console.log('🧹 Clearing chat state - user signed out');
       setChats([]);
       setActiveChatState(null);
       setMessages([]);
@@ -224,10 +221,6 @@ export const useFirestoreChat = (
     
     // Clear state if user switches to a different user
     if (prevUserId && prevUserId !== userId) {
-      console.log('🧹 Clearing chat state - user switched:', { 
-        from: prevUserId.slice(-6), 
-        to: userId.slice(-6) 
-      });
       setChats([]);
       setActiveChatState(null);
       setMessages([]);
@@ -247,13 +240,11 @@ export const useFirestoreChat = (
       return;
     }
 
-    console.log('📡 Loading chats for user:', { userId: userId.slice(-6), webhookId: webhookId.slice(-6) });
     setLoading(true);
     
     const unsubscribe = subscribeToWebhookChats(userId, webhookId, (firestoreChats) => {
       setChats(firestoreChats);
       setLoading(false);
-      console.log('✅ Loaded chats:', firestoreChats.length);
     });
 
     return () => unsubscribe();

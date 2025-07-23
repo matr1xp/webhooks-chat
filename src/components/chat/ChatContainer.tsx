@@ -149,7 +149,6 @@ export function ChatContainer({ className }: ChatContainerProps) {
     // Additional validation for Firebase mode
     if (USE_FIREBASE && (!activeChat.id || activeChat.id.trim() === '')) {
       setError('Active chat has invalid ID. Please refresh and try again.');
-      console.error('Active chat has empty ID:', activeChat);
       return;
     }
 
@@ -196,42 +195,19 @@ export function ChatContainer({ className }: ChatContainerProps) {
 
       // Send to webhook directly - no queueing
       try {
-        console.log('📡 Sending message to webhook:', {
-          webhookUrl: activeWebhook?.url,
-          messageContent: payload.message.content
-        });
-        
         const response = await webhookClient.sendMessage(payload, activeWebhook as any);
-        
-        console.log('📡 Webhook response received:', {
-          success: response.success,
-          hasBotMessage: !!response.botMessage,
-          botMessageContent: response.botMessage?.content,
-          rawResponse: response
-        });
         
         if (response.success) {
           updateMessageStatus(message.id, 'delivered');
           
           // Add bot response message if available
           if (response.botMessage && response.botMessage.content) {
-            console.log('🤖 Adding bot message:', {
-              content: response.botMessage.content,
-              isFirebase: USE_FIREBASE
-            });
-            
             if (USE_FIREBASE) {
               // Use Firebase bot message method
               const botMessage = await firebase.addBotMessage(
                 response.botMessage.content,
                 response.botMessage.metadata
               );
-              console.log('🤖 Firebase bot message created:', {
-                id: botMessage.id,
-                isBot: botMessage.isBot,
-                userId: botMessage.userId,
-                content: botMessage.content
-              });
             } else {
               // Use Redux method
               const botMessage = await addMessage({
@@ -377,7 +353,6 @@ export function ChatContainer({ className }: ChatContainerProps) {
     </div>
   );
   } catch (error) {
-    console.error('ChatContainer error:', error);
     return (
       <div className="h-screen w-full flex items-center justify-center">
         <div className="text-center">

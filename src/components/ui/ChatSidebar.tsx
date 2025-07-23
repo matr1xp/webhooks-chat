@@ -48,18 +48,6 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
   const activeChat = USE_FIREBASE ? firebase.activeChat : reduxActiveChat;
   const chatsForActiveWebhook = USE_FIREBASE ? firebase.chats.filter(chat => chat.webhookId === activeWebhook?.id) : reduxChatsForActiveWebhook;
 
-  // Debug logging for sidebar state
-  console.log('🔍 ChatSidebar state:', {
-    USE_FIREBASE,
-    webhookCount: USE_FIREBASE ? firebase.webhooks.length : store.webhooks.length,
-    webhooksList: USE_FIREBASE ? firebase.webhooks.map(w => ({ id: w.id, name: w.name })) : store.webhooks.map(w => ({ id: w.id, name: w.name })),
-    activeWebhookId: activeWebhook?.id,
-    activeWebhookName: activeWebhook?.name,
-    firebaseActiveWebhook: firebase.activeWebhook,
-    authLoading: USE_FIREBASE ? firebase.authLoading : false,
-    configLoading: USE_FIREBASE ? firebase.configLoading : false,
-    userProfile: !!firebase.userProfile
-  });
 
   const handleNewChat = async () => {
     if (!activeWebhook) return;

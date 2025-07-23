@@ -39,7 +39,6 @@ export const useFirestoreConfig = (userId: string | null): UseFirestoreConfigRet
   // Auto-set first webhook as active if none is set but webhooks exist
   React.useEffect(() => {
     if (userId && userProfile && webhooks.length > 0 && !userProfile.webhooks.activeWebhookId) {
-      console.log('🔧 Auto-setting first webhook as active:', webhooks[0].name);
       // Use the setActiveWebhook function defined below
       const autoSetActive = async () => {
         try {
@@ -56,7 +55,6 @@ export const useFirestoreConfig = (userId: string | null): UseFirestoreConfigRet
             activeWebhookId: webhooks[0].id,
           });
         } catch (err: any) {
-          console.error('Failed to auto-set active webhook:', err);
         }
       };
       autoSetActive();
@@ -110,26 +108,21 @@ export const useFirestoreConfig = (userId: string | null): UseFirestoreConfigRet
     if (!userId) throw new Error('User ID required');
     
     const callId = Math.random().toString(36).substr(2, 9);
-    console.log(`[${callId}] addWebhook called:`, { userId, userProfile: !!userProfile, name, url });
     
     // Wait for user profile to be loaded if it's not available yet
     let currentProfile = userProfile;
     if (!currentProfile) {
-      console.log('User profile not loaded, waiting...');
       
       // Wait up to 5 seconds for profile to load, checking every 500ms
       for (let i = 0; i < 10 && !currentProfile; i++) {
         await new Promise(resolve => setTimeout(resolve, 500));
         currentProfile = userProfile;
-        console.log(`Wait attempt ${i + 1}: userProfile available = ${!!currentProfile}`);
       }
       
       // If still no profile, try to get it directly from Firestore
       if (!currentProfile) {
-        console.log('Still no user profile, fetching directly from Firestore...');
         const { getUserProfile } = await import('../firestore/users');
         currentProfile = await getUserProfile(userId);
-        console.log('Direct fetch result:', !!currentProfile);
         
         if (!currentProfile) {
           throw new Error('User profile could not be loaded. Please try refreshing the page.');
@@ -165,13 +158,10 @@ export const useFirestoreConfig = (userId: string | null): UseFirestoreConfigRet
         webhookConfig.activeWebhookId = currentProfile.webhooks.activeWebhookId;
       }
       
-      console.log(`[${callId}] Updating user webhooks with:`, webhookConfig);
       await updateUserWebhooks(userId, webhookConfig);
-      console.log(`[${callId}] Webhook update completed`);
 
       return newWebhook;
     } catch (err: any) {
-      console.error('Error in addWebhook:', err);
       setError(err.message);
       throw err;
     }
@@ -239,27 +229,15 @@ export const useFirestoreConfig = (userId: string | null): UseFirestoreConfigRet
 
   // Subscribe to user profile
   useEffect(() => {
-    console.log('👀 useFirestoreConfig subscription effect:', { userId, hasUserId: !!userId });
-    
     if (!userId) {
-      console.log('❌ No userId, clearing profile');
       setUserProfile(null);
       setLoading(false);
       return;
     }
 
-    console.log('🔄 Starting Firestore subscription for user:', userId);
     setLoading(true);
 
     const unsubscribe = subscribeToUser(userId, (profile) => {
-      console.log('📊 User profile updated from Firestore:', {
-        userId,
-        profileExists: !!profile,
-        webhooksCount: profile?.webhooks?.webhooks?.length || 0,
-        webhooksList: profile?.webhooks?.webhooks?.map(w => ({ id: w.id, name: w.name })) || [],
-        activeWebhookId: profile?.webhooks?.activeWebhookId,
-        timestamp: new Date().toISOString()
-      });
       setUserProfile(profile);
       setLoading(false);
     });

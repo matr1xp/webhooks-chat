@@ -21,7 +21,6 @@ export const createUserProfile = async (userId: string, userData: Partial<Firest
   const userSnap = await getDoc(userRef);
   
   if (userSnap.exists()) {
-    console.log('User profile already exists, skipping creation to preserve existing data');
     return;
   }
   
@@ -51,7 +50,6 @@ export const createUserProfile = async (userId: string, userData: Partial<Firest
   // Only add activeWebhookId if we have one (avoid undefined)
   // This will be set later when a webhook is selected
 
-  console.log('Creating new user profile for:', userId);
   await setDoc(userRef, defaultUser, { merge: true });
 };
 
@@ -92,7 +90,6 @@ export const updateUserWebhooks = async (
   userId: string,
   webhooks: FirestoreUser['webhooks']
 ): Promise<void> => {
-  console.log('updateUserWebhooks called with:', { userId, webhooks });
   
   if (!userId || userId.trim() === '') {
     throw new Error('userId cannot be empty');
@@ -107,7 +104,6 @@ export const updateUserWebhooks = async (
   
   // Safety check: Don't allow empty webhooks array if activeWebhookId is set
   if (webhooks.activeWebhookId && (!webhooks.webhooks || webhooks.webhooks.length === 0)) {
-    console.warn('Preventing update that would clear webhooks with active webhook ID:', webhooks.activeWebhookId);
     throw new Error('Cannot clear webhooks array when active webhook is set');
   }
   
@@ -116,15 +112,11 @@ export const updateUserWebhooks = async (
     cleanWebhooks.activeWebhookId = webhooks.activeWebhookId;
   }
   
-  console.log('Updating Firestore document with:', cleanWebhooks);
-  
   try {
     await updateDoc(userRef, {
       'webhooks': cleanWebhooks,
     });
-    console.log('Firestore update successful');
   } catch (error) {
-    console.error('Firestore update failed:', error);
     throw error;
   }
 };

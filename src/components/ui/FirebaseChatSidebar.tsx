@@ -81,7 +81,6 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
       );
       setActiveChat(newChat.id);
     } catch (error) {
-      console.error('Failed to create new chat:', error);
     }
   }, [activeWebhook, isSignedIn, signInWithGoogle, createNewChat, setActiveChat]);
 
@@ -107,7 +106,6 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
         setActiveChat(nextActiveChat);
       }
     } catch (error) {
-      console.error('Failed to delete chat:', error);
     }
   }, [activeChat?.id, chatsForActiveWebhook, deleteChat, setActiveChat]);
 
@@ -124,7 +122,6 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
       setEditingChat(null);
       setEditName('');
     } catch (error) {
-      console.error('Failed to update chat:', error);
     }
   }, [editingChat, editName, updateChat]);
 
@@ -139,10 +136,8 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
     try {
       const deletedCount = await cleanupEmptyChats(activeWebhook.id);
       if (deletedCount > 0) {
-        console.log(`🧹 Cleaned up ${deletedCount} empty chats`);
       }
     } catch (error) {
-      console.error('Failed to cleanup empty chats:', error);
     }
   }, [activeWebhook, cleanupEmptyChats]);
 
@@ -155,7 +150,6 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
       await signOut();
       setShowSignOutModal(false);
     } catch (error) {
-      console.error('Failed to sign out:', error);
     }
   }, [signOut]);
 

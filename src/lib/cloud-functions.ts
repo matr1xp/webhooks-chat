@@ -36,9 +36,6 @@ export class CloudFunctionsClient {
    */
   async sendWebhook(payload: any, webhookUrl?: string, secret?: string): Promise<any> {
     const url = this.getUrl('webhookSend');
-    console.log('🔗 Calling Cloud Function:', url);
-    console.log('📤 Payload:', payload);
-    console.log('📤 Custom webhook URL:', webhookUrl || 'using default');
     
     // Create extended payload that includes webhook configuration
     const extendedPayload = {
@@ -58,19 +55,15 @@ export class CloudFunctionsClient {
         body: JSON.stringify(extendedPayload),
       });
 
-      console.log('📥 Response status:', response.status, response.statusText);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Cloud Function error:', errorText);
         throw new Error(`Webhook failed: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('✅ Cloud Function success:', result);
       return result;
     } catch (error: any) {
-      console.error('🚨 Cloud Function call failed:', error);
       
       // Provide more specific error messages
       if (error.name === 'TypeError' && error.message === 'Failed to fetch') {

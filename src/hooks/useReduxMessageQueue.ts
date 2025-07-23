@@ -60,7 +60,6 @@ export const useMessageQueue = () => {
     try {
       // This would contain the actual queue processing logic
       // For now, it's a placeholder since we don't have access to webhook client here
-      console.log('Processing queue with', pendingMessages.length, 'pending messages');
     } finally {
       dispatch(setProcessing(false));
     }

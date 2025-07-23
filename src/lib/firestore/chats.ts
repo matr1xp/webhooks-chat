@@ -146,7 +146,6 @@ export const deleteEmptyChats = async (userId: string, webhookId?: string): Prom
   
   await Promise.all(deletePromises);
   
-  console.log(`🧹 Cleaned up ${querySnapshot.docs.length} empty chats`);
   return querySnapshot.docs.length;
 };
 

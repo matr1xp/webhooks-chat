@@ -23,8 +23,6 @@ class WebhookClient {
       // Cloud Function already handles the response parsing
       return response;
     } catch (error) {
-      console.error('Failed to send webhook via Cloud Function:', error instanceof Error ? error.message : 'Unknown error');
-      
       // Return a proper error response
       return {
         success: false,
@@ -38,7 +36,6 @@ class WebhookClient {
   async getMessageHistory(sessionId: string, limit: number = 50, webhookConfig?: WebhookConfig): Promise<any> {
     // For Phase 2, message history will be handled directly via Firestore
     // This method is kept for backward compatibility but will be deprecated
-    console.warn('getMessageHistory is deprecated in Cloud Functions mode. Use Firestore directly.');
     
     // Return empty history for now - Firestore integration handles this
     return {
@@ -58,7 +55,6 @@ class WebhookClient {
       
       return response.status === 'healthy';
     } catch (error) {
-      console.error('Health check failed:', error);
       return false;
     }
   }
@@ -72,7 +68,6 @@ class WebhookClient {
         false // Not a health check
       );
     } catch (error) {
-      console.error('Webhook test failed:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Test failed',

@@ -76,7 +76,6 @@ export const convertTimestamp = (timestamp: Timestamp | any): string => {
   }
   
   // Fallback to current date
-  console.warn('Invalid timestamp format, using current date:', timestamp);
   return new Date().toISOString();
 };
 

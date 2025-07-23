@@ -23,7 +23,6 @@ export const auth = getAuth(app);
 // This ensures Google authenticated users persist across browser sessions
 if (typeof window !== 'undefined') {
   setPersistence(auth, browserLocalPersistence).catch((error) => {
-    console.error('Failed to set auth persistence:', error);
   });
 }
 

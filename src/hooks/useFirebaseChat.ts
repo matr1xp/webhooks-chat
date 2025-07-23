@@ -91,13 +91,11 @@ export const useFirebaseChat = () => {
   const clearMessages = async (sessionId?: string) => {
     // For now, we don't implement clearing individual sessions
     // This could be implemented with Firebase batch operations if needed
-    console.warn('clearMessages not implemented for Firebase chat');
   };
 
   const clearAllSessions = async () => {
     // For now, we don't implement clearing all sessions
     // This could be implemented with Firebase batch operations if needed
-    console.warn('clearAllSessions not implemented for Firebase chat');
   };
 
   const setLoading = (loading: boolean) => {

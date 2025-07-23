@@ -20,7 +20,6 @@ import type { Message } from '@/types/chat';
 // Collection reference
 const getMessagesCollection = (chatId: string) => {
   if (!chatId || chatId.trim() === '') {
-    console.error('getMessagesCollection called with empty chatId:', chatId);
     throw new Error('getMessagesCollection: chatId cannot be empty');
   }
   return collection(db, 'messages', chatId, 'messages');
