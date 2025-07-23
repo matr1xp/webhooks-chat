@@ -1,20 +1,46 @@
-# Chat Interface for n8n Webhook Integration
+# WebChat Interface for n8n Webhook Integration
 
-A modern, responsive chat interface built with Next.js that sends user messages to n8n workflows via webhooks. Features real-time messaging, file uploads, offline support with message queuing, and comprehensive error handling.
+A modern, responsive chat interface built with Next.js that integrates with n8n workflows via webhooks. Features Firebase authentication, real-time messaging, dual data persistence (Firebase/Redux), comprehensive webhook management, and modern typography.
 
-## Features
+## ✨ Features
 
-- 🚀 **Modern Tech Stack**: Next.js 14, React, TypeScript, Tailwind CSS
-- 💬 **Real-time Chat**: Optimistic UI updates with status indicators
-- 📱 **Responsive Design**: Mobile-first approach with touch optimizations
-- 📎 **File Upload**: Drag-and-drop file uploads with type validation
-- 🔄 **Message Queue**: Offline support with automatic retry mechanisms
-- 🔌 **n8n Integration**: Direct webhook integration with comprehensive error handling
-- 🎨 **Modern UI**: Clean design with shadcn/ui components
-- 🏪 **State Management**: Redux Toolkit with Redux Persist for reliable state management
-- ⚡ **Performance**: Optimized for speed and user experience
+### 🔐 Authentication & User Management
+- **Firebase Authentication** with Google Sign-in and anonymous fallback
+- **User Profile Management** with persistent preferences
+- **Session Management** across browser sessions and devices
+- **Security Rules** with user-based access control
 
-## Quick Start
+### 💬 Advanced Chat System
+- **Real-time Messaging** with optimistic UI updates and status tracking
+- **Multi-session Support** with unlimited concurrent chat sessions
+- **Dual Data Persistence**: Firebase Firestore or Redux with localStorage
+- **Bot Integration** with n8n workflow responses and metadata support
+- **Message Types**: Text, file uploads (images/documents up to 10MB)
+- **Drag & Drop Interface** for seamless file sharing
+
+### 🔗 Comprehensive Webhook Management
+- **Multiple Webhook Configurations** with CRUD operations
+- **Health Monitoring** with automatic connection testing
+- **API Secret Management** with secure storage and show/hide toggle
+- **Firebase Cloud Functions** proxy for enhanced security and reliability
+- **Error Handling** with detailed feedback and retry mechanisms
+- **Webhook Testing** with built-in diagnostic tools
+
+### 🎨 Modern UI/UX
+- **Custom Typography System**: Gail Rock (chat), Nordhead Typeface (headers)
+- **Light/Dark Mode** with system theme detection and persistence
+- **Responsive Design** with mobile-first approach and touch optimizations
+- **Glassmorphism Effects** with backdrop blur and modern styling
+- **Visual Status Indicators** for connections, messages, and system health
+
+### 🚀 Production-Ready Architecture
+- **Next.js 15** with App Router and TypeScript
+- **Static Export** for serverless deployment
+- **Firebase Integration**: Hosting, Functions, Firestore, Auth
+- **Performance Optimized** with caching, compression, and CDN support
+- **Comprehensive Testing** with Jest and React Testing Library
+
+## 🚀 Quick Start
 
 ### 1. Installation
 
@@ -26,55 +52,80 @@ cd chat-interface
 npm install
 ```
 
-### 2. Environment Configuration
+### 2. Firebase Setup
+
+Configure Firebase services:
+
+```bash
+# Install Firebase CLI
+npm install -g firebase-tools
+
+# Login to Firebase
+firebase login
+
+# Initialize project (if not already done)
+firebase init
+```
+
+### 3. Environment Configuration
 
 Create a `.env.local` file:
 
 ```env
+# Application Configuration
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Firebase Configuration (get from Firebase Console)
+NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
+NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abcdef
+
+# Optional: Default n8n Webhook Configuration
 N8N_WEBHOOK_URL=https://your-n8n-instance.com/webhook/chat
 WEBHOOK_SECRET=your-secret-key
+
+# Optional: Timeout Configuration
+TIMEOUT=10000
+NEXT_PUBLIC_TIMEOUT=30000
 ```
 
-### 3. Run Development Server
+### 4. Run Development Server
 
 ```bash
+# Start with development logging
 npm run dev
+
+# Or start with verbose output
+npm run dev:verbose
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to view the chat interface.
 
-## Configuration
+## 📋 Configuration
 
-### Environment Variables
+### Firebase Setup
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `NEXT_PUBLIC_APP_URL` | Your application URL | Yes |
-| `N8N_WEBHOOK_URL` | n8n webhook endpoint URL | Yes |
-| `WEBHOOK_SECRET` | Secret key sent as `X-Webhook-Secret` header for n8n authentication | Optional but recommended |
-| `TIMEOUT` | Server-side webhook request timeout in milliseconds (default: 10000ms) | Optional |
-| `NEXT_PUBLIC_TIMEOUT` | Client-side webhook request timeout in milliseconds (default: 30000ms) | Optional |
+1. **Create Firebase Project** at [Firebase Console](https://console.firebase.google.com)
+2. **Enable Authentication** with Google provider
+3. **Create Firestore Database** with security rules
+4. **Deploy Cloud Functions** for webhook proxy
+5. **Configure Hosting** for static site deployment
 
 ### n8n Webhook Setup
 
-1. **Create a new workflow in n8n**
-2. **Add a "Webhook" node as the trigger**
-   - Set HTTP Method to `POST`
-   - Set Response Mode to `Respond to Webhook`
-   - If using authentication, configure the webhook to expect `X-Webhook-Secret` header
-   - Copy the webhook URL (should look like `https://your-n8n.com/webhook/your-id`)
-3. **Activate the workflow** (very important - webhook only works when workflow is active)
-4. **Configure the environment variables in your `.env.local`**
-   ```env
-   N8N_WEBHOOK_URL=https://your-n8n.com/webhook/your-webhook-id
-   WEBHOOK_SECRET=your-secret-key-here
-   TIMEOUT=30000
-   NEXT_PUBLIC_TIMEOUT=30000
-   ```
-5. **Test the webhook** by sending a message in the chat interface
+1. **Create Workflow** in n8n with Webhook trigger
+2. **Configure Webhook Node**:
+   - HTTP Method: `POST`
+   - Response Mode: `Respond to Webhook`
+   - Authentication: Optional `X-Webhook-Secret` header
+3. **Activate Workflow** (critical - inactive workflows don't receive webhooks)
+4. **Add Webhook** in chat interface configuration modal
+5. **Test Connection** using built-in health check
 
-The webhook will receive payloads in this simple format:
+The webhook receives simplified payloads:
 
 ```json
 {
@@ -82,215 +133,263 @@ The webhook will receive payloads in this simple format:
 }
 ```
 
-## Architecture
+## 🏗️ Architecture
 
-### Component Structure
+### Directory Structure
 
 ```
 src/
 ├── components/
-│   ├── chat/
-│   │   ├── ChatContainer.tsx      # Main chat wrapper
-│   │   ├── MessageList.tsx        # Message display area
-│   │   ├── MessageInput.tsx       # Input with file upload
-│   │   ├── MessageBubble.tsx      # Individual messages
-│   │   └── TypingIndicator.tsx    # Loading states
-│   └── ui/
-│       ├── FileUpload.tsx         # Drag-and-drop upload
-│       └── Modal.tsx              # Modal component
-├── store/
-│   ├── index.ts                   # Redux store configuration
-│   ├── chatSlice.ts               # Chat state management
-│   ├── configSlice.ts             # Configuration management
-│   ├── messageQueueSlice.ts       # Message queue management
-│   └── configSelectors.ts         # Redux selectors
-├── hooks/
-│   ├── useReduxChat.ts            # Redux chat hooks
-│   ├── useReduxConfig.ts          # Redux config hooks
-│   └── useReduxMessageQueue.ts    # Redux queue hooks
-├── providers/
-│   └── ReduxProvider.tsx          # Redux provider with persistence
-├── lib/
-│   ├── webhook-client.ts          # n8n webhook client
-│   ├── validation.ts              # Zod schemas
-│   └── utils.ts                   # Utility functions
-├── types/
-│   └── chat.ts                    # TypeScript interfaces
-└── app/
-    ├── api/                       # Next.js API routes
-    ├── layout.tsx                 # Root layout
-    └── page.tsx                   # Main page
+│   ├── chat/                    # Chat interface components
+│   │   ├── ChatContainer.tsx    # Main chat wrapper with dual-mode support
+│   │   ├── MessageList.tsx      # Message display with virtual scrolling
+│   │   ├── MessageInput.tsx     # Input with file upload and validation
+│   │   └── MessageBubble.tsx    # Individual messages with status
+│   ├── ui/                      # Reusable UI components
+│   │   ├── ConfigModal.tsx      # Webhook configuration management
+│   │   ├── FileUpload.tsx       # Drag-and-drop file handling
+│   │   ├── Modal.tsx            # Modal component system
+│   │   └── ThemeToggle.tsx      # Light/dark mode toggle
+│   └── auth/                    # Authentication components
+│       └── GoogleSignIn.tsx     # Firebase Auth integration
+├── contexts/                    # React context providers
+│   ├── FirebaseContext.tsx     # Firebase service integration
+│   ├── ThemeContext.tsx        # Theme management
+│   └── ConfigContext.tsx       # Configuration management
+├── hooks/                       # Custom React hooks
+│   ├── useFirebaseChat.ts       # Firebase chat operations
+│   ├── useReduxChat.ts          # Redux chat operations
+│   └── useFirestoreAuth.ts      # Authentication state management
+├── lib/                         # Utilities and integrations
+│   ├── firebase.ts              # Firebase SDK configuration
+│   ├── webhook-client.ts        # n8n webhook client
+│   ├── cloud-functions.ts       # Firebase Functions client
+│   └── validation.ts            # Zod validation schemas
+├── store/                       # Redux state management
+│   ├── chatSlice.ts             # Chat state and message handling
+│   ├── configSlice.ts           # Configuration management
+│   └── messageQueueSlice.ts     # Offline message queuing
+├── functions/                   # Firebase Cloud Functions
+│   ├── src/
+│   │   ├── webhook.ts           # Webhook proxy functions
+│   │   └── health.ts            # Health check functions
+└── app/                         # Next.js App Router
+    ├── api/                     # API routes (legacy support)
+    ├── globals.css              # Global styles and typography
+    └── page.tsx                 # Main application page
 ```
 
 ### Key Features
 
+#### Dual Data Persistence
+- **Firebase Mode**: Real-time Firestore with authentication
+- **Redux Mode**: Local storage with offline support
+- **Feature Flag**: Toggle between modes via `USE_FIREBASE` flag
+- **Data Migration**: Seamless switching between persistence modes
+
+#### Authentication System
+- **Google Sign-in**: OAuth integration with Chrome identity API
+- **Anonymous Auth**: Fallback for development and testing
+- **User Profiles**: Persistent user data and preferences
+- **Security Rules**: Firestore access control based on authentication
+
 #### Message Queue System
-- Automatic retry with exponential backoff
-- Persistent storage for offline messages using Redux Persist
-- Queue processing every 5 seconds
-- Manual retry functionality
-- State persistence across browser sessions
+- **Offline Support**: Queue messages when disconnected
+- **Automatic Retry**: Exponential backoff with manual retry options
+- **Persistent Storage**: Survive browser restarts and network issues
+- **Status Tracking**: Real-time message delivery status
 
-#### File Upload
-- Drag-and-drop interface
-- File type validation
-- Size limits (25MB default)
-- Support for images, documents, and more
+## 🛠️ Available Scripts
 
-#### Responsive Design
-- Mobile-first approach
-- Touch-optimized interactions
-- Adaptive layouts for different screen sizes
-- Safe area handling for mobile devices
+```bash
+# Development
+npm run dev              # Start development server with logging
+npm run dev:verbose      # Start with verbose output
 
-## API Routes
+# Building & Production
+npm run build            # Build optimized production bundle
+npm run start            # Start production server
 
-### POST `/api/webhook/send`
-Forwards messages to the configured n8n webhook.
+# Quality Assurance
+npm run lint             # Run ESLint code analysis
+npm run type-check       # Run TypeScript validation
+npm test                 # Run Jest test suite
+npm run test:watch       # Run tests in watch mode
+npm run test:coverage    # Generate test coverage report
 
-**Request Body:**
-```json
-{
-  "sessionId": "string",
-  "messageId": "string",
-  "timestamp": "string",
-  "user": { "id": "string", "name": "string" },
-  "message": { "type": "text|file|image", "content": "string" }
+# Firebase Deployment
+firebase deploy          # Deploy to Firebase hosting
+firebase emulators:start # Start local Firebase emulators
+```
+
+## 📱 API Routes & Cloud Functions
+
+### Firebase Cloud Functions
+
+#### `webhookSend`
+Secure proxy for n8n webhook communication with authentication and error handling.
+
+#### `healthCheck`
+Monitor n8n webhook availability and connection status.
+
+#### `testWebhook`
+Diagnostic endpoint for webhook troubleshooting and debugging.
+
+### Legacy API Routes (Compatibility)
+
+#### `POST /api/webhook/send`
+Direct webhook forwarding (available in Redux mode).
+
+#### `GET /api/health`
+Basic health check for webhook connectivity.
+
+## 🎨 Typography System
+
+### Custom Font Families
+- **Gail Rock**: Chat bubbles and message content
+  - Regular (400): Standard text
+  - Medium (500): Input fields
+  - Bold (700): Emphasis
+- **Nordhead Typeface**: Headers and navigation
+- **Monoline**: Available for custom styling
+
+### Usage Examples
+```css
+/* Tailwind classes */
+.font-gail-rock    /* Gail Rock family */
+.font-nordhead     /* Nordhead Typeface */
+.font-monoline     /* Monoline family */
+
+/* CSS properties */
+font-family: 'Gail Rock', sans-serif;
+font-family: 'Nordhead Typeface', sans-serif;
+```
+
+## 🚀 Production Deployment
+
+### Firebase Deployment
+
+```bash
+# Build and deploy
+npm run build
+firebase deploy
+
+# Deploy specific services
+firebase deploy --only hosting
+firebase deploy --only functions
+firebase deploy --only firestore
+```
+
+### Alternative Platforms
+
+#### Vercel
+```bash
+npm run build
+# Deploy out/ directory to Vercel
+```
+
+#### Netlify
+```bash
+npm run build
+# Deploy out/ directory to Netlify
+```
+
+## 🔧 Customization
+
+### Theme Customization
+Modify theme variables in `src/app/globals.css`:
+
+```css
+:root {
+  --primary: your-primary-color;
+  --secondary: your-secondary-color;
+  /* Add custom CSS variables */
 }
 ```
 
-### GET `/api/messages/[sessionId]`
-Retrieves message history for a session (placeholder implementation).
+### Adding Message Types
+1. Extend types in `src/types/chat.ts`
+2. Update validation schemas in `src/lib/validation.ts`
+3. Add rendering logic in `MessageBubble.tsx`
+4. Update webhook payload structure
 
-### GET `/api/health`
-Health check endpoint that verifies n8n webhook availability.
+### Custom Webhooks
+Configure webhook endpoints in the app:
+1. Open configuration modal
+2. Add webhook with URL and optional secret
+3. Test connection
+4. Set as active webhook
 
-### POST `/api/test-webhook`
-Test endpoint to debug webhook connectivity issues. Returns detailed error information.
-
-## Development
-
-### Available Scripts
-
-```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run start        # Start production server
-npm run lint         # Run ESLint
-npm run type-check   # Run TypeScript checks
-```
-
-### Technology Stack
-
-- **Framework**: Next.js 14 with App Router
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **State Management**: Redux Toolkit with Redux Persist
-- **HTTP Client**: Axios
-- **Validation**: Zod
-- **Icons**: Lucide React
-
-## Production Deployment
-
-1. Build the application:
-   ```bash
-   npm run build
-   ```
-
-2. Set production environment variables
-
-3. Deploy to your preferred platform (Vercel, Netlify, etc.)
-
-## State Management
-
-This application uses **Redux Toolkit** with **Redux Persist** for comprehensive state management:
-
-### Redux Store Structure
-- **Chat Slice** (`chatSlice.ts`): Manages messages, sessions, and chat state
-- **Config Slice** (`configSlice.ts`): Handles webhook configurations and settings
-- **Message Queue Slice** (`messageQueueSlice.ts`): Manages offline message queuing
-
-### Key Benefits
-- **Persistent State**: All state automatically persists across browser sessions
-- **Redux DevTools**: Full debugging support with Redux DevTools extension
-- **Predictable Updates**: All state changes are trackable and debuggable
-- **Optimistic UI**: Immediate UI updates with proper rollback on failures
-- **Reactive Components**: Components automatically re-render on state changes
-
-### Usage Example
-```typescript
-// Using Redux hooks in components
-const { messages, addMessage, updateMessageStatus } = useChatStore();
-const activeWebhook = useSelector(selectActiveWebhook);
-const dispatch = useDispatch();
-```
-
-## Customization
-
-### Styling
-Modify `src/app/globals.css` and Tailwind configuration in `tailwind.config.js`.
-
-### Message Types
-Extend the message types in `src/types/chat.ts` and update validation schemas.
-
-### Webhook Payload
-Customize the payload structure in `src/lib/webhook-client.ts`.
-
-### Redux Store
-Extend the Redux store by adding new slices in `src/store/` and updating the root store configuration.
-
-## Troubleshooting
+## 🔍 Troubleshooting
 
 ### Common Issues
 
-1. **Webhook receiving 403 Forbidden errors**
-   - **Check if your n8n instance requires authentication**
-   - If using n8n cloud or self-hosted with auth, you may need API credentials
-   - Try accessing the webhook URL directly in your browser to see the error
-   - Ensure the webhook URL format is correct: `https://your-n8n.com/webhook/your-webhook-id`
-   - Check n8n instance security settings and CORS configuration
+#### Authentication Problems
+- **Google Sign-in fails**: Check Firebase console configuration
+- **Anonymous auth issues**: Verify Firebase Auth settings
+- **Permission denied**: Review Firestore security rules
 
-2. **Webhook not receiving messages (404/general errors)**
-   - Verify `N8N_WEBHOOK_URL` is correct and complete
-   - **Ensure the n8n workflow is ACTIVE** (most common issue)
-   - Check that the webhook node is set to `POST` method
-   - Test the webhook URL directly with a tool like Postman
-   - Review n8n workflow execution logs for errors
+#### Webhook Integration
+- **404 errors**: Ensure n8n workflow is ACTIVE
+- **403 errors**: Check webhook authentication and secrets
+- **Timeout issues**: Verify webhook response times and network connectivity
+- **Connection refused**: Confirm webhook URL and n8n instance availability
 
-2. **File uploads not working**
-   - Check file size limits
-   - Verify file type restrictions
-   - Review browser console for errors
-
-3. **Messages stuck in queue**
-   - Check network connectivity
-   - Verify webhook endpoint health
-   - Use manual retry button
+#### Development Issues
+- **Build failures**: Run `npm run type-check` and fix TypeScript errors
+- **Test failures**: Check test configuration and dependencies
+- **Firebase connection**: Verify environment variables and Firebase setup
 
 ### Debug Mode
 
-Enable development mode for detailed logging:
+Enable comprehensive logging:
+
 ```bash
-npm run dev
+# Development logging
+npm run dev:verbose
+
+# Check browser console for detailed error information
+# Monitor Network tab for webhook communication
+# Use Firebase emulators for local debugging
 ```
 
-Check browser console and network tab for debugging information.
+## 📄 Technology Stack
 
-## License
+- **Framework**: Next.js 15 with App Router
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS with custom typography
+- **State Management**: Redux Toolkit with Redux Persist
+- **Database**: Firebase Firestore
+- **Authentication**: Firebase Auth
+- **Backend**: Firebase Cloud Functions
+- **Hosting**: Firebase Hosting
+- **HTTP Client**: Axios
+- **Validation**: Zod
+- **Testing**: Jest + React Testing Library
+- **Icons**: Lucide React
+
+## 📄 License
 
 MIT License - feel free to use this project for your own n8n integrations.
 
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes with proper testing
+4. Run quality checks (`npm run lint && npm run type-check`)
+5. Commit changes (`git commit -m 'feat: add amazing feature'`)
+6. Push to branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
 
-## Support
+## 💬 Support
 
 For issues and questions:
-1. Check the troubleshooting section
-2. Review the n8n webhook documentation
-3. Open an issue with detailed information
+1. Check the troubleshooting section above
+2. Review [n8n webhook documentation](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/)
+3. Check [Firebase documentation](https://firebase.google.com/docs)
+4. Open an issue with detailed reproduction steps
+
+---
+
+Built with ❤️ for seamless n8n workflow integration
