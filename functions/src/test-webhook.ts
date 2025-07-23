@@ -23,12 +23,47 @@ export const testWebhook = onRequest({
       const isHealthCheck = healthCheck === true;
       
       // Use custom URL if provided, otherwise fall back to environment variable
-      const n8nWebhookUrl = customUrl || process.env.N8N_WEBHOOK_URL;
+      let n8nWebhookUrl = customUrl || process.env.N8N_WEBHOOK_URL;
       
       if (!n8nWebhookUrl) {
         res.status(400).json({
           success: false,
           error: 'No webhook URL provided and N8N_WEBHOOK_URL not configured'
+        });
+        return;
+      }
+
+      // Validate URL to prevent SSRF attacks
+      try {
+        const parsedUrl = new URL(n8nWebhookUrl);
+        
+        // Verify protocol is http or https
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+          res.status(400).json({
+            success: false,
+            error: 'Invalid URL protocol. Only http and https are allowed.'
+          });
+          return;
+        }
+
+        // If using custom URL, validate domain
+        if (customUrl) {
+          const allowedDomains = ['example.com']; // add your allowed domains here
+          if (!allowedDomains.includes(parsedUrl.hostname)) {
+            res.status(400).json({
+              success: false,
+              error: 'Domain not allowed for custom URLs'
+            });
+            return;
+          }
+        }
+
+        // Use the validated URL
+        n8nWebhookUrl = parsedUrl.href;
+      } catch (error) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid URL format'
         });
         return;
       }
