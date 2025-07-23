@@ -5,18 +5,20 @@ import { combineReducers } from '@reduxjs/toolkit';
 import chatReducer from './chatSlice';
 import configReducer from './configSlice';
 import messageQueueReducer from './messageQueueSlice';
+import fileCacheReducer from './fileCacheSlice';
 
 const persistConfig = {
   key: 'app-store-v3',
   version: 3,
   storage,
-  whitelist: ['chat', 'config', 'messageQueue'], // Persist all slices
+  whitelist: ['chat', 'config', 'messageQueue', 'fileCache'], // Persist all slices
 };
 
 const rootReducer = combineReducers({
   chat: chatReducer,
   config: configReducer,
   messageQueue: messageQueueReducer,
+  fileCache: fileCacheReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

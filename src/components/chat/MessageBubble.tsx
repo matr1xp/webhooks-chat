@@ -11,13 +11,33 @@ import remarkGfm from 'remark-gfm';
 interface MessageBubbleProps {
   message: Message;
   isUser?: boolean;
+  fileDataCache?: Record<string, string>;
 }
 
-export function MessageBubble({ message, isUser }: MessageBubbleProps) {
+export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBubbleProps) {
   const { theme } = useTheme();
   const { user } = useFirebase();
   // Determine if this is a user message (default to true if not explicitly set)
   const actualIsUser = isUser !== undefined ? isUser : !message.isBot;
+
+  // Helper function to get Base64 data from cache or message
+  const getFileData = (message: Message) => {
+    if (!message.fileData) return null;
+    
+    // Check if we have Base64 data in cache (for newly uploaded files)
+    const cachedData = fileDataCache[message.id];
+    if (cachedData) {
+      return {
+        ...message.fileData,
+        data: cachedData
+      };
+    }
+    
+    // Fallback to message.fileData.data (if it exists)
+    return message.fileData.data ? message.fileData : null;
+  };
+
+  const fileData = getFileData(message);
 
   const getStatusIcon = () => {
     switch (message.status) {
@@ -63,20 +83,55 @@ export function MessageBubble({ message, isUser }: MessageBubbleProps) {
               )}
               {message.type === 'image' && (
                 <div>
-                  <img 
-                    src={message.content} 
-                    alt="Shared image" 
-                    className="rounded-lg max-w-full h-auto mb-2 shadow-md"
-                    loading="lazy"
-                  />
+                  {fileData && fileData.data && (
+                    <div className="flex items-start space-x-3 mb-2">
+                      <img 
+                        src={`data:${fileData.type};base64,${fileData.data}`}
+                        alt={fileData.name}
+                        className="w-12 h-12 rounded-lg object-cover flex-shrink-0 shadow-md border border-white/20"
+                        loading="lazy"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm leading-relaxed">
+                          {message.content && typeof message.content === 'string' ? message.content : '[Invalid content]'}
+                        </p>
+                        <p className="text-xs opacity-75 mt-1">Image sent for processing</p>
+                      </div>
+                    </div>
+                  )}
+                  {(!fileData || !fileData.data) && (
+                    <div className="flex items-start space-x-3 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                      <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm">🖼️</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm leading-relaxed">
+                          {message.content && typeof message.content === 'string' ? message.content : '[Invalid content]'}
+                        </p>
+                        <p className="text-xs opacity-75 mt-1">Image sent for processing</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {message.type === 'file' && (
-                <div className="flex items-center space-x-3 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
-                  <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm">📎</span>
+                <div className="flex items-start space-x-3 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
+                  {fileData && fileData.type.startsWith('image/') && fileData.data ? (
+                    <img 
+                      src={`data:${fileData.type};base64,${fileData.data}`}
+                      alt={fileData.name}
+                      className="w-8 h-8 rounded-lg object-cover flex-shrink-0 shadow-md border border-white/20"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm">📎</span>
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{message.content}</p>
+                    <p className="text-xs opacity-75 mt-1">File sent for processing</p>
                   </div>
-                  <span className="text-sm font-medium">{message.content}</span>
                 </div>
               )}
             </div>
@@ -222,20 +277,53 @@ export function MessageBubble({ message, isUser }: MessageBubbleProps) {
               )}
               {message.type === 'image' && (
                 <div>
-                  <img 
-                    src={message.content} 
-                    alt="Shared image" 
-                    className="rounded-lg max-w-full h-auto mb-2 shadow-md"
-                    loading="lazy"
-                  />
+                  {fileData && fileData.data && (
+                    <div className="flex items-start space-x-3 mb-2">
+                      <img 
+                        src={`data:${fileData.type};base64,${fileData.data}`}
+                        alt={fileData.name}
+                        className="w-12 h-12 rounded-lg object-cover flex-shrink-0 shadow-md border border-slate-200 dark:border-slate-600"
+                        loading="lazy"
+                      />
+                      <div className="text-sm markdown-content flex-1" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>
+                        {message.content && typeof message.content === 'string' ? message.content : '[Invalid content]'}
+                        <p className="text-xs opacity-75 mt-1" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>Image processed</p>
+                      </div>
+                    </div>
+                  )}
+                  {(!fileData || !fileData.data) && (
+                    <div className="flex items-start space-x-3 bg-slate-50 dark:bg-slate-700 rounded-lg p-3">
+                      <div className="w-8 h-8 bg-slate-200 dark:bg-slate-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm">🖼️</span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm markdown-content" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>
+                          {message.content && typeof message.content === 'string' ? message.content : '[Invalid content]'}
+                        </div>
+                        <p className="text-xs opacity-75 mt-1" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>Image processed</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {message.type === 'file' && (
-                <div className="flex items-center space-x-3 bg-slate-50 dark:bg-slate-700 rounded-lg p-3">
-                  <div className="w-8 h-8 bg-slate-200 dark:bg-slate-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm">📎</span>
+                <div className="flex items-start space-x-3 bg-slate-50 dark:bg-slate-700 rounded-lg p-3">
+                  {fileData && fileData.type.startsWith('image/') && fileData.data ? (
+                    <img 
+                      src={`data:${fileData.type};base64,${fileData.data}`}
+                      alt={fileData.name}
+                      className="w-8 h-8 rounded-lg object-cover flex-shrink-0 shadow-md border border-slate-200 dark:border-slate-600"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-slate-200 dark:bg-slate-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm">📎</span>
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{message.content}</span>
+                    <p className="text-xs opacity-75 mt-1" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>File processed</p>
                   </div>
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{message.content}</span>
                 </div>
               )}
             </div>

@@ -14,6 +14,12 @@ interface WebhookPayload {
   message: {
     type: 'text' | 'file' | 'image';
     content: string;
+    file?: {
+      name: string;
+      size: number;
+      type: string;
+      data: string; // Base64 encoded file data
+    };
   };
   context?: {
     source: 'web' | 'mobile';
@@ -49,6 +55,18 @@ function validateWebhookPayload(body: any): WebhookPayload | null {
     !['text', 'file', 'image'].includes(body.message.type)
   ) {
     return null;
+  }
+  
+  // Optional file data validation
+  if (body.message.file) {
+    if (
+      typeof body.message.file.name !== 'string' ||
+      typeof body.message.file.size !== 'number' ||
+      typeof body.message.file.type !== 'string' ||
+      typeof body.message.file.data !== 'string'
+    ) {
+      return null;
+    }
   }
   
   // Optional webhook configuration validation

@@ -39,10 +39,16 @@ export function generateUserId(): string {
 }
 
 export function sanitizeInput(input: string): string {
-  return input
+  if (!input || typeof input !== 'string') {
+    return '';
+  }
+  
+  const sanitized = input
     .trim()
     .replace(/[<>]/g, '') // Remove potential HTML tags
     .substring(0, 10000); // Limit length
+    
+  return sanitized;
 }
 
 export function detectMessageType(content: string): 'text' | 'file' | 'image' {

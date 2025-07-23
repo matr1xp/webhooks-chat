@@ -175,6 +175,7 @@ export const convertFirestoreMessageToMessage = (
     status: firestoreMessage.status,
     isBot: firestoreMessage.isBot,
     metadata: firestoreMessage.metadata,
+    fileData: (firestoreMessage as any).fileData,
   };
 };
 
@@ -182,17 +183,33 @@ export const convertFirestoreMessageToMessage = (
 export const convertMessageToFirestore = (
   message: Omit<Message, 'id' | 'timestamp'>
 ): Omit<FirestoreMessage, 'id' | 'timestamp'> => {
+  // Validate required fields
+  if (!message.content || typeof message.content !== 'string') {
+    throw new Error('Message content is required and must be a string');
+  }
+  if (!message.type || !['text', 'file', 'image'].includes(message.type)) {
+    throw new Error('Message type is required and must be text, file, or image');
+  }
+  if (!message.userId || typeof message.userId !== 'string') {
+    throw new Error('Message userId is required and must be a string');
+  }
+  
   const firestoreMessage: any = {
     content: message.content,
     type: message.type,
     userId: message.userId,
-    status: message.status,
+    status: message.status || 'sending',
     isBot: message.isBot || false,
   };
   
   // Only add metadata if it's defined and not null
   if (message.metadata !== undefined && message.metadata !== null) {
     firestoreMessage.metadata = message.metadata;
+  }
+  
+  // Only add fileData if it's defined and not null
+  if (message.fileData !== undefined && message.fileData !== null) {
+    firestoreMessage.fileData = message.fileData;
   }
   
   return firestoreMessage;

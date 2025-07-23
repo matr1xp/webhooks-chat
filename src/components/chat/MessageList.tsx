@@ -10,9 +10,10 @@ interface MessageListProps {
   messages: Message[];
   isLoading?: boolean;
   className?: string;
+  fileDataCache?: Record<string, string>;
 }
 
-export function MessageList({ messages, isLoading = false, className }: MessageListProps) {
+export function MessageList({ messages, isLoading = false, className, fileDataCache = {} }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -45,6 +46,7 @@ export function MessageList({ messages, isLoading = false, className }: MessageL
               key={message.id}
               message={message}
               isUser={!message.isBot} // Bot messages have isBot=true, user messages don't
+              fileDataCache={fileDataCache}
             />
           ))}
           <TypingIndicator isVisible={isLoading} />

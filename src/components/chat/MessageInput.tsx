@@ -7,8 +7,15 @@ import { cn } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
 import { FileUpload } from '@/components/ui/FileUpload';
 
+interface FileData {
+  name: string;
+  size: number;
+  type: string;
+  data: string; // Base64 encoded
+}
+
 interface MessageInputProps {
-  onSendMessage: (content: string, type?: 'text' | 'file' | 'image') => void;
+  onSendMessage: (content: string, type?: 'text' | 'file' | 'image', fileData?: FileData) => void;
   disabled?: boolean;
   placeholder?: string;
   className?: string;
@@ -31,7 +38,7 @@ export function MessageInput({
 
     setIsSubmitting(true);
     try {
-      await onSendMessage(message.trim());
+      onSendMessage(message.trim());
       setMessage('');
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
@@ -57,12 +64,56 @@ export function MessageInput({
     textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
   };
 
-  const handleFileSelect = (file: File) => {
-    // For demo purposes, we'll just send the filename
-    // In a real app, you'd upload the file to a storage service and get a URL
-    const fileType = file.type.startsWith('image/') ? 'image' : 'file';
-    onSendMessage(`📎 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`, fileType);
-    setShowFileUpload(false);
+  const handleFileSelect = async (file: File) => {
+    try {
+      // Add file size check for processing
+      // Since we're sending to cloud run for processing (not storing in Firestore),
+      // we can be more generous with file sizes
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit for cloud processing
+        console.error('File too large for processing:', file.size);
+        onSendMessage(`📎 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB) - File too large for processing (max 10MB)`, file.type.startsWith('image/') ? 'image' : 'file');
+        setShowFileUpload(false);
+        return;
+      }
+
+      
+      // Convert file to base64
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
+          const base64 = result.split(',')[1] || result;
+          resolve(base64);
+        };
+        reader.onerror = (error) => {
+          console.error('FileReader error:', error);
+          reject(error);
+        };
+        reader.readAsDataURL(file);
+      });
+
+      const fileType = file.type.startsWith('image/') ? 'image' : 'file';
+      
+      // Create file data object
+      const fileData = {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        data: base64Data
+      };
+
+      
+      // Send message with file data
+      onSendMessage(`📎 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`, fileType, fileData);
+      setShowFileUpload(false);
+    } catch (error) {
+      console.error('Error processing file:', error);
+      // Fallback to text description if file processing fails
+      const fileType = file.type.startsWith('image/') ? 'image' : 'file';
+      onSendMessage(`📎 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB) - Error processing file`, fileType);
+      setShowFileUpload(false);
+    }
   };
 
   return (
@@ -152,7 +203,7 @@ export function MessageInput({
         <FileUpload
           onFileSelect={handleFileSelect}
           accept="image/*,.pdf,.doc,.docx,.txt,.csv,.json,.xml"
-          maxSize={25 * 1024 * 1024} // 25MB
+          maxSize={10 * 1024 * 1024} // 10MB (for cloud processing, not Firestore storage)
         />
       </Modal>
     </div>

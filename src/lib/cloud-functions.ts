@@ -46,13 +46,23 @@ export class CloudFunctionsClient {
     };
     
     try {
+      const payloadStr = JSON.stringify(extendedPayload);
+      const payloadSizeMB = (payloadStr.length / 1024 / 1024).toFixed(2);
+      
+      console.log(`Sending webhook payload: ${payloadSizeMB}MB`);
+      
+      // Check payload size before sending
+      if (payloadStr.length > 10 * 1024 * 1024) { // 10MB limit
+        throw new Error(`Payload too large: ${payloadSizeMB}MB (max 10MB)`);
+      }
+      
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Webhook-Secret': secret || process.env.NEXT_PUBLIC_WEBHOOK_SECRET || '',
         },
-        body: JSON.stringify(extendedPayload),
+        body: payloadStr,
       });
 
 

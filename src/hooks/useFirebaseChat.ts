@@ -77,8 +77,8 @@ export const useFirebaseChat = () => {
   const addMessageHandler = async (messageData: Omit<Message, 'id' | 'timestamp' | 'status'>): Promise<Message> => {
     await ensureAuthenticated();
     
-    // Create Firebase message
-    const firebaseMessage = await addMessage(messageData.content, messageData.type);
+    // Pass the full messageData object to Firebase context
+    const firebaseMessage = await addMessage(messageData);
     
     return firebaseMessage;
   };

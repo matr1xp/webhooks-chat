@@ -42,7 +42,7 @@ interface FirebaseContextType {
   updateChat: (chatId: string, name: string) => Promise<void>;
   deleteChat: (chatId: string) => Promise<void>;
   cleanupEmptyChats: (webhookId?: string) => Promise<number>;
-  addMessage: (content: string, type?: Message['type']) => Promise<Message>;
+  addMessage: (messageData: Omit<Message, 'id' | 'timestamp' | 'status'>) => Promise<Message>;
   addBotMessage: (content: string, metadata?: Record<string, any>) => Promise<Message>;
   updateMessage: (messageId: string, status: Message['status']) => Promise<void>;
 }
@@ -183,7 +183,7 @@ export function useFirebaseChat() {
     // Methods
     setCurrentSession: setActiveChat,
     addMessage: async (messageData: any) => {
-      return addMessage(messageData.content, messageData.type);
+      return addMessage(messageData);
     },
     updateMessageStatus: updateMessage,
     clearMessages: () => {}, // Will implement if needed

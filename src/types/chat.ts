@@ -8,6 +8,13 @@ export interface Message {
   status: 'sending' | 'delivered' | 'failed';
   isBot?: boolean; // Flag to identify bot messages
   metadata?: Record<string, any>;
+  // For file/image preview purposes
+  fileData?: {
+    name: string;
+    size: number;
+    type: string;
+    data: string; // Base64 encoded for preview
+  };
 }
 
 export interface User {
@@ -32,6 +39,12 @@ export interface WebhookPayload {
     type: 'text' | 'file' | 'image';
     content: string;
     metadata?: Record<string, any>;
+    file?: {
+      name: string;
+      size: number;
+      type: string;
+      data: string; // Base64 encoded file data
+    };
   };
   context?: {
     previousMessages?: number;

@@ -30,7 +30,7 @@ interface UseFirestoreChatReturn {
   // Messages
   messages: Message[];
   messagesLoading: boolean;
-  addMessage: (content: string, type?: Message['type']) => Promise<Message>;
+  addMessage: (messageData: Omit<Message, 'id' | 'timestamp' | 'status'>) => Promise<Message>;
   addBotMessage: (content: string, metadata?: Record<string, any>) => Promise<Message>;
   updateMessage: (messageId: string, status: Message['status']) => Promise<void>;
   
@@ -123,24 +123,33 @@ export const useFirestoreChat = (
 
   // Add message
   const addMessage = useCallback(async (
-    content: string,
-    type?: Message['type']
+    messageData: Omit<Message, 'id' | 'timestamp' | 'status'>
   ): Promise<Message> => {
-    const messageType = type || 'text';
     if (!userId || !activeChat) throw new Error('User ID and active chat are required');
     if (!activeChat.id || activeChat.id.trim() === '') throw new Error('Active chat ID cannot be empty');
     
     try {
-      const messageData = convertMessageToFirestore({
+      // Explicitly construct the message data to avoid spreading issues
+      const fullMessageData = {
         sessionId: activeChat.id,
-        content,
-        type: messageType,
-        userId,
-        status: 'sending',
-        isBot: false,
-      });
+        content: messageData.content,
+        type: messageData.type,
+        userId: messageData.userId,
+        status: 'sending' as const,
+        isBot: messageData.isBot || false
+      };
+      
+      // Add optional fields explicitly
+      if (messageData.fileData) {
+        (fullMessageData as any).fileData = messageData.fileData;
+      }
+      if (messageData.metadata) {
+        (fullMessageData as any).metadata = messageData.metadata;
+      }
+      
+      const firestoreMessageData = convertMessageToFirestore(fullMessageData);
 
-      const firestoreMessage = await addFirestoreMessage(activeChat.id, messageData);
+      const firestoreMessage = await addFirestoreMessage(activeChat.id, firestoreMessageData);
       const message = convertFirestoreMessageToMessage(firestoreMessage);
       message.sessionId = activeChat.id;
       

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,14 +42,24 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
 
   if (!isOpen) return null;
 
-  return (
+  const modalContent = (
     <div
       ref={modalRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm p-4"
       onClick={handleBackdropClick}
+      style={{ 
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0
+      }}
     >
       <div className={cn(
-        'rounded-lg shadow-lg border w-full mx-4 max-h-[90vh] overflow-auto',
+        'rounded-lg shadow-lg border w-full max-h-[90vh] overflow-auto relative',
         !className?.includes('max-w-') && 'max-w-md',
         className
       )}
@@ -85,4 +96,6 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

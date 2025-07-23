@@ -14,6 +14,7 @@ import { WebhookPayload } from '@/types/chat';
 import { generateSessionId, generateUserId, sanitizeInput } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { AlertCircle, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { useFileCache } from '@/hooks/useFileCache';
 
 interface ChatContainerProps {
   className?: string;
@@ -48,6 +49,9 @@ export function ChatContainer({ className }: ChatContainerProps) {
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const isInitialized = useRef(false);
+  
+  // Redux file cache for persistent Base64 data storage
+  const { cache: fileDataCache, setFileCacheData, cleanupCache } = useFileCache();
 
   // Get active webhook and chat - use Firebase or Redux based on feature flag
   const rawActiveWebhook = USE_FIREBASE ? firebase.activeWebhook : store?.getActiveWebhook();
@@ -104,6 +108,14 @@ export function ChatContainer({ className }: ChatContainerProps) {
     }
   }, [USE_FIREBASE, messages.length, activeChat?.id, store]);
 
+  // Cleanup old file cache entries when messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      const activeMessageIds = messages.map(msg => msg.id);
+      cleanupCache(activeMessageIds);
+    }
+  }, [messages, cleanupCache]);
+
   // Check webhook health
   useEffect(() => {
     const checkHealth = async () => {
@@ -139,7 +151,11 @@ export function ChatContainer({ className }: ChatContainerProps) {
     };
   }, [isSendingMessage, activeWebhook]);
 
-  const handleSendMessage = async (content: string, type: 'text' | 'file' | 'image' = 'text') => {
+  const handleSendMessage = async (
+    content: string, 
+    type: 'text' | 'file' | 'image' = 'text',
+    fileData?: { name: string; size: number; type: string; data: string }
+  ) => {
     // Check if we have an active webhook and chat
     if (!activeWebhook || !activeChat) {
       setError('No active webhook or chat configured. Please configure a webhook and select a chat.');
@@ -158,22 +174,47 @@ export function ChatContainer({ className }: ChatContainerProps) {
       
       const sanitizedContent = sanitizeInput(content);
       
-      if (!sanitizedContent) return;
+      if (!sanitizedContent || sanitizedContent.trim() === '') {
+        console.warn('Empty content after sanitization, skipping message');
+        return;
+      }
 
       // Add message to local state immediately (optimistic update)
       const sessionId = USE_FIREBASE ? activeChat.id : (activeChat as any).sessionId;
-      const message = await addMessage({
+      
+      // Create message payload for Firestore (without large Base64 data)
+      const messagePayload = {
         sessionId,
         userId,
         type,
         content: sanitizedContent,
-      });
+        isBot: false
+      };
+      
+      // For Firestore storage, only include file metadata (not Base64 data)
+      // But for local UI preview, we'll add the Base64 data after Firestore save
+      if (fileData) {
+        (messagePayload as any).fileData = {
+          name: fileData.name,
+          size: fileData.size,
+          type: fileData.type,
+          // Note: Base64 data is NOT stored in Firestore, only sent to webhook
+        };
+      }
+      
+      
+      const message = await addMessage(messagePayload);
+
+      // Store Base64 data in Redux cache for persistent UI preview
+      if (fileData && message.id) {
+        setFileCacheData(message.id, fileData.data);
+      }
 
       // Message count will be updated automatically by useEffect
 
       setLoading(true);
 
-      // Prepare webhook payload
+      // Prepare webhook payload with full file data for cloud run processing
       const payload: WebhookPayload = {
         sessionId,
         messageId: message.id,
@@ -185,6 +226,8 @@ export function ChatContainer({ className }: ChatContainerProps) {
         message: {
           type,
           content: sanitizedContent,
+          // Include FULL file data (with Base64) for cloud run function processing
+          ...(fileData && { file: fileData })
         },
         context: {
           previousMessages: messages.length,
@@ -192,6 +235,7 @@ export function ChatContainer({ className }: ChatContainerProps) {
           source: 'web' as const,
         },
       };
+      
 
       // Send to webhook directly - no queueing
       try {
@@ -328,6 +372,7 @@ export function ChatContainer({ className }: ChatContainerProps) {
           messages={messages} 
           isLoading={isLoading}
           className="min-h-full px-4 py-6"
+          fileDataCache={fileDataCache}
         />
       </div>
 
