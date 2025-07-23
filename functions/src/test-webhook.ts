@@ -48,7 +48,7 @@ export const testWebhook = onRequest({
 
         // If using custom URL, validate domain
         if (customUrl) {
-          const allowedDomains = ['example.com']; // add your allowed domains here
+          const allowedDomains = ['n8n.ml1.app']; // add your allowed domains here
           if (!allowedDomains.includes(parsedUrl.hostname)) {
             res.status(400).json({
               success: false,
