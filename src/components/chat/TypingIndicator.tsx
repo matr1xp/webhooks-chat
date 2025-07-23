@@ -16,8 +16,12 @@ export function TypingIndicator({ isVisible, className }: TypingIndicatorProps) 
   return (
     <div className={cn('flex justify-start items-start space-x-3 mb-4', className)}>
       {/* Bot avatar */}
-      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg ring-2 ring-white ring-opacity-20">
-        <span className="text-white text-sm font-medium">🤖</span>
+      <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-lg ring-2 ring-white ring-opacity-20 overflow-hidden">
+        <img
+          src="/robot-01-sm.png"
+          alt="AI Assistant"
+          className="w-8 h-8 object-contain"
+        />
       </div>
       
       {/* Typing bubble with modern glassmorphism design */}

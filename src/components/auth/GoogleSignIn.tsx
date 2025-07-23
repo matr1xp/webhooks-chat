@@ -22,7 +22,6 @@ export function GoogleSignIn({ className }: GoogleSignInProps) {
     try {
       await signInWithGoogle();
     } catch (error) {
-      console.error('Sign-in error:', error);
       setShowFallback(true);
     } finally {
       setIsSigningIn(false);
@@ -34,7 +33,6 @@ export function GoogleSignIn({ className }: GoogleSignInProps) {
     try {
       await signInAnonymous();
     } catch (error) {
-      console.error('Anonymous sign-in error:', error);
     } finally {
       setIsSigningIn(false);
     }
@@ -76,7 +74,7 @@ export function GoogleSignIn({ className }: GoogleSignInProps) {
             </h1>
             
             <p className="text-sm sm:text-base" style={{ 
-              color: theme === 'light' ? '#64748b' : '#94a3b8' 
+              color: theme === 'light' ? '#475569' : '#94a3b8' 
             }}>
               Sign in to access your chat interface and n8n webhook integrations
             </p>
@@ -115,7 +113,7 @@ export function GoogleSignIn({ className }: GoogleSignInProps) {
               'shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]'
             )}
             style={{ 
-              color: theme === 'light' ? '#374151' : '#e2e8f0' 
+              color: theme === 'light' ? '#1f2937' : '#e2e8f0' 
             }}
           >
             {authLoading || isSigningIn ? (
@@ -156,7 +154,7 @@ export function GoogleSignIn({ className }: GoogleSignInProps) {
                   'disabled:opacity-50 disabled:cursor-not-allowed'
                 )}
                 style={{ 
-                  color: theme === 'light' ? '#6b7280' : '#9ca3af' 
+                  color: theme === 'light' ? '#4b5563' : '#9ca3af' 
                 }}
               >
                 {authLoading || isSigningIn ? (
@@ -172,7 +170,7 @@ export function GoogleSignIn({ className }: GoogleSignInProps) {
               </button>
               
               <p className="mt-2 text-xs text-center" style={{ 
-                color: theme === 'light' ? '#9ca3af' : '#6b7280' 
+                color: theme === 'light' ? '#6b7280' : '#9ca3af' 
               }}>
                 Limited features • Data may not persist
               </p>
@@ -182,7 +180,7 @@ export function GoogleSignIn({ className }: GoogleSignInProps) {
           {/* Security Badge */}
           <div className="mt-8 pt-6 border-t border-gray-200 dark:border-slate-700">
             <div className="flex items-center justify-center space-x-2 text-xs" style={{ 
-              color: theme === 'light' ? '#6b7280' : '#9ca3af' 
+              color: theme === 'light' ? '#4b5563' : '#9ca3af' 
             }}>
               <ShieldCheck className="w-4 h-4 text-green-500" />
               <span>Secured by Firebase Authentication</span>
@@ -193,7 +191,7 @@ export function GoogleSignIn({ className }: GoogleSignInProps) {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-xs" style={{ 
-            color: theme === 'light' ? '#9ca3af' : '#6b7280' 
+            color: theme === 'light' ? '#6b7280' : '#9ca3af' 
           }}>
             Your data is encrypted and stored securely. We never share your information.
           </p>
