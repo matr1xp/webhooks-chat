@@ -281,9 +281,8 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                   'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                   activeTab === 'webhooks'
                     ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                    : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                    : 'hover-enhanced text-gray-700 dark:text-slate-400'
                 )}
-                style={{ color: activeTab !== 'webhooks' ? (theme === 'light' ? '#374151' : '#94a3b8') : undefined }}
               >
                 <Webhook className="w-4 h-4 inline mr-2" />
                 Webhooks
@@ -294,9 +293,8 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                   'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                   activeTab === 'general'
                     ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                    : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                    : 'hover-enhanced text-gray-700 dark:text-slate-400'
                 )}
-                style={{ color: activeTab !== 'general' ? (theme === 'light' ? '#374151' : '#94a3b8') : undefined }}
               >
                 <Globe className="w-4 h-4 inline mr-2" />
                 General
@@ -313,9 +311,8 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                   'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors',
                   activeTab === 'webhooks'
                     ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                    : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                    : 'hover-enhanced text-gray-700 dark:text-slate-400'
                 )}
-                style={{ color: activeTab !== 'webhooks' ? (theme === 'light' ? '#374151' : '#94a3b8') : undefined }}
               >
                 <Webhook className="w-4 h-4 inline mr-2" />
                 Webhooks
@@ -326,9 +323,8 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                   'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors',
                   activeTab === 'general'
                     ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                    : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                    : 'hover-enhanced text-gray-700 dark:text-slate-400'
                 )}
-                style={{ color: activeTab !== 'general' ? (theme === 'light' ? '#374151' : '#94a3b8') : undefined }}
               >
                 <Globe className="w-4 h-4 inline mr-2" />
                 General
@@ -363,7 +359,11 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                   {webhooks.map((webhook) => (
                     <div
                       key={webhook.id}
-                      className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 md:p-6 bg-white dark:bg-slate-800"
+                      className="rounded-lg p-4 md:p-6"
+                      style={{
+                        backgroundColor: theme === 'light' ? '#ffffff' : '#1e293b',
+                        border: `1px solid ${theme === 'light' ? '#e2e8f0' : '#475569'}`
+                      }}
                     >
                       <div className="flex flex-col md:flex-row md:items-start justify-between space-y-4 md:space-y-0">
                         <div className="flex-1 min-w-0">
@@ -374,31 +374,30 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                                 style={{ backgroundColor: USE_FIREBASE ? '#3b82f6' : ((webhook as any).metadata?.color || '#3b82f6') }}
                               />
                               <div 
-                                className="webhook-name flex-shrink-0"
-                                style={{ 
-                                  color: '#ffffff',
-                                  fontWeight: '400',
-                                  fontSize: '1rem',
-                                  lineHeight: '1.2rem',
-                                  backgroundColor: 'rgba(29, 9, 130, 0.5)',
-                                  borderRadius: '4px',
-                                  padding: '4px 8px 0px 8px'
+                                className="webhook-name flex-shrink-0 font-normal text-base leading-5 rounded px-2 py-2"
+                                style={{
+                                  backgroundColor: theme === 'light' ? '#dbeafe' : 'rgba(30, 58, 138, 0.5)',
+                                  color: theme === 'light' ? '#1e3a8a' : '#dbeafe',
+                                  padding: '4px 8px 0px 8px'                             
                                 }}
                               >
                                 {webhook.name}
                               </div>
                             </div>
-                            {((USE_FIREBASE && webhook.id === activeWebhookId) || (!USE_FIREBASE && webhook.isActive)) && (
-                              <span className="px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-full self-start">
-                                Active
-                              </span>
-                            )}
                           </div>
                           
                           <div className="mt-3 space-y-2">
                             <div className="flex items-start text-sm">
-                              <Globe className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }} />
-                              <span className="font-mono break-all text-xs sm:text-sm" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}>{webhook.url}</span>
+                              <Globe 
+                                className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" 
+                                style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }} 
+                              />
+                              <span 
+                                className="font-mono break-all text-xs sm:text-sm" 
+                                style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}
+                              >
+                                {webhook.url}
+                              </span>
                             </div>
                             
                             {((USE_FIREBASE && (webhook as any).secret) || (!USE_FIREBASE && (webhook as any).apiSecret)) && (
@@ -412,7 +411,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                                 </span>
                                 <button
                                   onClick={() => toggleSecretVisibility(webhook.id)}
-                                  className="ml-2 p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded flex-shrink-0"
+                                  className="ml-2 p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded flex-shrink-0"
                                 >
                                   {showSecrets[webhook.id] ? (
                                     <EyeOff className="w-3 h-3" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }} />
@@ -431,10 +430,33 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between md:justify-start space-x-2 md:ml-4">
-                          {/* Mobile: Stack buttons vertically, Desktop: Horizontal layout */}
-                          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 w-full md:w-auto">
-                            {/* Activate/Deactivate Button */}
+                        <div className="flex flex-col items-center space-y-3 md:flex-row md:items-center md:justify-start md:space-y-0 md:space-x-2 md:ml-4">
+                          {/* Active pill - centered on mobile */}
+                          {((USE_FIREBASE && webhook.id === activeWebhookId) || (!USE_FIREBASE && webhook.isActive)) && (
+                            <span className="px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-full">
+                              Active
+                            </span>
+                          )}
+                          
+                          {/* Action Buttons Row - centered on mobile */}
+                          <div className="flex space-x-2 justify-center">
+                            <button
+                              onClick={() => setEditingWebhook(webhook.id)}
+                              className="p-3 sm:p-2 rounded-lg hover-enhanced transition-colors flex-1 sm:flex-none min-h-[44px] min-w-[44px] flex items-center justify-center"
+                              title="Edit Webhook"
+                            >
+                              <Edit3 className="w-5 h-5 sm:w-4 sm:h-4 text-gray-700 dark:text-slate-400" />
+                            </button>
+                            
+                            <button
+                              onClick={() => setShowDeleteModal(webhook.id)}
+                              className="p-3 sm:p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900 active:bg-red-200 dark:active:bg-red-800 transition-colors flex-1 sm:flex-none min-h-[44px] min-w-[44px] flex items-center justify-center"
+                              title="Delete Webhook"
+                            >
+                              <Trash2 className="w-5 h-5 sm:w-4 sm:h-4 text-red-500" />
+                            </button>
+                            
+                            {/* Activate/Deactivate Button - Now positioned after delete */}
                             {((USE_FIREBASE && webhook.id !== activeWebhookId) || (!USE_FIREBASE && !webhook.isActive)) && (
                               <button
                                 onClick={() => {
@@ -444,61 +466,20 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                                     store.setActiveWebhook(webhook.id);
                                   }
                                 }}
-                                className="px-4 py-3 sm:px-3 sm:py-2 text-sm sm:text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 active:bg-blue-300 dark:active:bg-blue-700 transition-colors w-full sm:w-auto min-h-[44px] flex items-center justify-center"
+                                className="p-3 sm:p-2 rounded-lg bg-green-100 dark:bg-green-900 hover:bg-green-200 dark:hover:bg-green-800 active:bg-green-300 dark:active:bg-green-700 transition-colors flex-1 sm:flex-none min-h-[44px] min-w-[44px] flex items-center justify-center"
                                 title="Set as Active Webhook"
                               >
-                                Activate
+                                <svg 
+                                  className="w-5 h-5 sm:w-4 sm:h-4" 
+                                  fill="none" 
+                                  stroke="currentColor" 
+                                  viewBox="0 0 24 24"
+                                  style={{ color: theme === 'light' ? '#15803d' : '#86efac' }}
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
                               </button>
                             )}
-                            
-                            {/* Action Buttons Row */}
-                            <div className="flex space-x-2 justify-center sm:justify-start">
-                              {/* Test Connection Button */}
-                              <button
-                                onClick={() => testWebhookConnection(webhook)}
-                                disabled={testingWebhooks[webhook.id]}
-                                className={cn(
-                                  "p-3 sm:p-2 rounded-lg transition-colors flex-1 sm:flex-none min-h-[44px] min-w-[44px] flex items-center justify-center",
-                                  testingWebhooks[webhook.id] 
-                                    ? "opacity-50 cursor-not-allowed" 
-                                    : "hover:bg-slate-100 dark:hover:bg-slate-700 active:bg-slate-200 dark:active:bg-slate-600",
-                                  testResults[webhook.id] === 'success' && "bg-green-100 dark:bg-green-900",
-                                  testResults[webhook.id] === 'error' && "bg-red-100 dark:bg-red-900"
-                                )}
-                                title="Test Webhook Connection"
-                              >
-                                {testingWebhooks[webhook.id] ? (
-                                  <div className="w-5 h-5 sm:w-4 sm:h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                  <Globe 
-                                    className="w-5 h-5 sm:w-4 sm:h-4" 
-                                    style={{ 
-                                      color: testResults[webhook.id] === 'success' 
-                                        ? '#10b981' 
-                                        : testResults[webhook.id] === 'error' 
-                                          ? '#ef4444' 
-                                          : theme === 'light' ? '#374151' : '#94a3b8' 
-                                    }} 
-                                  />
-                                )}
-                              </button>
-
-                              <button
-                                onClick={() => setEditingWebhook(webhook.id)}
-                                className="p-3 sm:p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 active:bg-slate-200 dark:active:bg-slate-600 transition-colors flex-1 sm:flex-none min-h-[44px] min-w-[44px] flex items-center justify-center"
-                                title="Edit Webhook"
-                              >
-                                <Edit3 className="w-5 h-5 sm:w-4 sm:h-4" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }} />
-                              </button>
-                              
-                              <button
-                                onClick={() => setShowDeleteModal(webhook.id)}
-                                className="p-3 sm:p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900 active:bg-red-200 dark:active:bg-red-800 transition-colors flex-1 sm:flex-none min-h-[44px] min-w-[44px] flex items-center justify-center"
-                                title="Delete Webhook"
-                              >
-                                <Trash2 className="w-5 h-5 sm:w-4 sm:h-4 text-red-500" />
-                              </button>
-                            </div>
                           </div>
                         </div>
                       </div>
@@ -585,7 +566,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                   color: theme === 'light' ? '#111827' : '#ffffff',
                   backgroundColor: theme === 'light' ? '#ffffff' : '#1e293b',
                   borderColor: theme === 'light' ? '#e2e8f0' : '#475569'
-                }}
+                } as React.CSSProperties}
                 placeholder="My Webhook"
               />
               {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
@@ -620,7 +601,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                 color: theme === 'light' ? '#111827' : '#ffffff',
                 backgroundColor: theme === 'light' ? '#ffffff' : '#1e293b',
                 borderColor: theme === 'light' ? '#e2e8f0' : '#475569'
-              }}
+              } as React.CSSProperties}
               placeholder="https://example.com/webhook"
             />
             {errors.url && <p className="text-red-500 text-xs mt-1">{errors.url}</p>}
@@ -641,7 +622,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                 color: theme === 'light' ? '#111827' : '#ffffff',
                 backgroundColor: theme === 'light' ? '#ffffff' : '#1e293b',
                 borderColor: theme === 'light' ? '#e2e8f0' : '#475569'
-              }}
+              } as React.CSSProperties}
               placeholder="Optional authentication secret"
             />
           </div>
@@ -660,32 +641,95 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                 color: theme === 'light' ? '#111827' : '#ffffff',
                 backgroundColor: theme === 'light' ? '#ffffff' : '#1e293b',
                 borderColor: theme === 'light' ? '#e2e8f0' : '#475569'
-              }}
+              } as React.CSSProperties}
               rows={3}
               placeholder="Brief description of this webhook..."
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3 pt-4 border-t border-slate-200 dark:border-slate-700">
-            <button
-              onClick={handleCancel}
-              className="w-full sm:w-auto px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-              style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="w-full sm:w-auto flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? (
-                <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Save className="w-4 h-4 mr-2" />
-              )}
-              {saving ? 'Saving...' : (editingWebhook === 'new' ? 'Add Webhook' : 'Save Changes')}
-            </button>
+          <div className="flex flex-col sm:flex-row justify-between space-y-3 sm:space-y-0 sm:space-x-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+            {/* Test Connection Button - Left Side */}
+            {editingWebhook !== 'new' && (
+              <button
+                onClick={() => {
+                  if (editingWebhook && formData.url.trim()) {
+                    // Create a temporary webhook object with the current form data
+                    const tempWebhook = {
+                      id: editingWebhook,
+                      url: formData.url.trim(),
+                      secret: formData.apiSecret.trim() || undefined,
+                      apiSecret: formData.apiSecret.trim() || undefined
+                    };
+                    testWebhookConnection(tempWebhook);
+                  }
+                }}
+                disabled={(editingWebhook ? testingWebhooks[editingWebhook] : false) || !formData.url.trim()}
+                className={cn(
+                  "w-full sm:w-auto px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors flex items-center justify-center",
+                  editingWebhook && testingWebhooks[editingWebhook] 
+                    ? "opacity-50 cursor-not-allowed" 
+                    : "hover-enhanced-light",
+                  editingWebhook && testResults[editingWebhook] === 'success' && "border-green-500 bg-green-50 dark:bg-green-900/20",
+                  editingWebhook && testResults[editingWebhook] === 'error' && "border-red-500 bg-red-50 dark:bg-red-900/20"
+                )}
+                style={{ 
+                  color: editingWebhook && testResults[editingWebhook] === 'success' 
+                    ? (theme === 'light' ? '#15803d' : '#4ade80')
+                    : editingWebhook && testResults[editingWebhook] === 'error'
+                    ? (theme === 'light' ? '#dc2626' : '#f87171') 
+                    : (theme === 'light' ? '#000000' : '#94a3b8')
+                }}
+              >
+                {editingWebhook && testingWebhooks[editingWebhook] ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Testing...
+                  </>
+                ) : editingWebhook && testResults[editingWebhook] === 'success' ? (
+                  <>
+                    <svg className="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Connection Successful
+                  </>
+                ) : editingWebhook && testResults[editingWebhook] === 'error' ? (
+                  <>
+                    <svg className="w-4 h-4 mr-2 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Connection Failed
+                  </>
+                ) : (
+                  <>
+                    <Globe className="w-4 h-4 mr-2" />
+                    Test Connection
+                  </>
+                )}
+              </button>
+            )}
+            
+            {/* Cancel and Save Buttons - Right Side */}
+            <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+              <button
+                onClick={handleCancel}
+                className="w-full sm:w-auto px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg hover-enhanced-light transition-colors"
+                style={{ color: theme === 'light' ? '#000000' : '#94a3b8' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full sm:w-auto flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? (
+                  <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                {saving ? 'Saving...' : (editingWebhook === 'new' ? 'Add Webhook' : 'Save Changes')}
+              </button>
+            </div>
           </div>
         </div>
       </Modal>
@@ -704,8 +748,7 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
           <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
             <button
               onClick={() => setShowDeleteModal(null)}
-              className="w-full sm:w-auto px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-              style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}
+              className="w-full sm:w-auto px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg hover-enhanced-light transition-colors text-gray-700 dark:text-slate-400"
             >
               Cancel
             </button>

@@ -525,7 +525,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                           }}
                           autoFocus
                           className="w-full text-sm font-medium bg-transparent border-none outline-none"
-                          style={{ color: theme === 'light' ? '#374151' : '#1f2937' }}
+                          style={{ color: theme === 'light' ? '#374151' : '#ffffff' }}
                         />
                       ) : (
                         <h3 className="text-sm font-medium truncate" style={{ 

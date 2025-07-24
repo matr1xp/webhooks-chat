@@ -92,6 +92,20 @@ export const useFirestoreChat = (
   const updateChat = useCallback(async (chatId: string, name: string): Promise<void> => {
     try {
       await updateChatName(chatId, name);
+      
+      // Update local state immediately for better UX
+      setChats(prevChats => 
+        prevChats.map(chat => 
+          chat.id === chatId ? { ...chat, name } : chat
+        )
+      );
+      
+      // Update activeChat if it's the one being renamed
+      setActiveChatState(prevActiveChat => 
+        prevActiveChat?.id === chatId 
+          ? { ...prevActiveChat, name }
+          : prevActiveChat
+      );
     } catch (err: any) {
       setError(err.message);
       throw err;
