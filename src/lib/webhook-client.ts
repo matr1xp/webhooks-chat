@@ -71,21 +71,6 @@ class WebhookClient {
     }
   }
 
-  async testWebhook(webhookConfig?: WebhookConfig): Promise<any> {
-    try {
-      // Use Cloud Functions test webhook
-      return await cloudFunctions.testWebhook(
-        webhookConfig?.url,
-        webhookConfig?.apiSecret,
-        false // Not a health check
-      );
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Test failed',
-      };
-    }
-  }
 }
 
 export { WebhookClient };

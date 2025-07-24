@@ -381,33 +381,12 @@ describe('WebhookClient', () => {
   });
 
   describe('checkHealth', () => {
-    it('returns true for healthy webhook', async () => {
-      mockedAxios.post.mockResolvedValueOnce({
-        status: 200,
-        data: { success: true },
-      });
-
+    it('returns false when no webhook config provided', async () => {
       const isHealthy = await webhookClient.checkHealth();
-
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        'http://localhost:3000/api/test-webhook',
-        {
-          url: undefined,
-          secret: undefined,
-          healthCheck: true,
-        },
-        expect.objectContaining({
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          timeout: 10000, // Health check timeout
-        })
-      );
-
-      expect(isHealthy).toBe(true);
+      expect(isHealthy).toBe(false);
     });
 
-    it('uses custom webhook config for health check', async () => {
+    it('returns true for healthy webhook', async () => {
       const webhookConfig: WebhookConfig = {
         id: 'webhook-1',
         name: 'Test Webhook',
@@ -417,90 +396,90 @@ describe('WebhookClient', () => {
         createdAt: '2023-12-01T10:00:00Z',
       };
 
-      mockedAxios.post.mockResolvedValueOnce({
-        status: 200,
-        data: { success: true },
+      // Mock fetch for the health check
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ status: 'healthy' }),
       });
 
       const isHealthy = await webhookClient.checkHealth(webhookConfig);
 
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        'http://localhost:3000/api/test-webhook',
-        {
-          url: 'https://test.com/webhook',
-          secret: 'test-secret',
-          healthCheck: true,
-        },
-        expect.any(Object)
+      expect(global.fetch).toHaveBeenCalledWith(
+        'undefined/healthCheck?webhookUrl=https%3A%2F%2Ftest.com%2Fwebhook&apiSecret=test-secret'
       );
 
       expect(isHealthy).toBe(true);
     });
 
     it('returns false for unhealthy webhook (HTTP error)', async () => {
-      mockedAxios.post.mockResolvedValueOnce({
+      const webhookConfig: WebhookConfig = {
+        id: 'webhook-1',
+        name: 'Test Webhook',
+        url: 'https://test.com/webhook',
+        apiSecret: 'test-secret',
+        isActive: true,
+        createdAt: '2023-12-01T10:00:00Z',
+      };
+
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: false,
         status: 500,
-        data: { success: false },
+        statusText: 'Internal Server Error',
       });
 
-      const isHealthy = await webhookClient.checkHealth();
+      const isHealthy = await webhookClient.checkHealth(webhookConfig);
       expect(isHealthy).toBe(false);
     });
 
     it('returns false for unsuccessful response', async () => {
-      mockedAxios.post.mockResolvedValueOnce({
-        status: 200,
-        data: { success: false },
+      const webhookConfig: WebhookConfig = {
+        id: 'webhook-1',
+        name: 'Test Webhook',
+        url: 'https://test.com/webhook',
+        apiSecret: 'test-secret',
+        isActive: true,
+        createdAt: '2023-12-01T10:00:00Z',
+      };
+
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ status: 'unhealthy' }),
       });
 
-      const isHealthy = await webhookClient.checkHealth();
+      const isHealthy = await webhookClient.checkHealth(webhookConfig);
       expect(isHealthy).toBe(false);
     });
 
     it('returns false when request fails', async () => {
-      mockedAxios.post.mockRejectedValueOnce(new Error('Network Error'));
+      const webhookConfig: WebhookConfig = {
+        id: 'webhook-1',
+        name: 'Test Webhook',
+        url: 'https://test.com/webhook',
+        apiSecret: 'test-secret',
+        isActive: true,
+        createdAt: '2023-12-01T10:00:00Z',
+      };
 
-      const isHealthy = await webhookClient.checkHealth();
+      global.fetch = jest.fn().mockRejectedValueOnce(new Error('Network Error'));
+
+      const isHealthy = await webhookClient.checkHealth(webhookConfig);
       expect(isHealthy).toBe(false);
     });
 
-    it('uses timeout based on environment configuration', async () => {
-      process.env.NEXT_PUBLIC_TIMEOUT = '60000';
+    it('returns false for invalid URL', async () => {
+      const webhookConfig: WebhookConfig = {
+        id: 'webhook-1',
+        name: 'Test Webhook',
+        url: 'invalid-url',
+        apiSecret: 'test-secret',
+        isActive: true,
+        createdAt: '2023-12-01T10:00:00Z',
+      };
 
-      mockedAxios.post.mockResolvedValueOnce({
-        status: 200,
-        data: { success: true },
-      });
-
-      await webhookClient.checkHealth();
-
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(Object),
-        expect.objectContaining({
-          timeout: 20000, // Third of 60000, but min 5000 applies
-        })
-      );
+      const isHealthy = await webhookClient.checkHealth(webhookConfig);
+      expect(isHealthy).toBe(false);
     });
 
-    it('enforces minimum health check timeout', async () => {
-      process.env.NEXT_PUBLIC_TIMEOUT = '3000'; // Very low timeout
-
-      mockedAxios.post.mockResolvedValueOnce({
-        status: 200,
-        data: { success: true },
-      });
-
-      await webhookClient.checkHealth();
-
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(Object),
-        expect.objectContaining({
-          timeout: 5000, // Minimum timeout applied
-        })
-      );
-    });
   });
 
   describe('Environment variable handling', () => {

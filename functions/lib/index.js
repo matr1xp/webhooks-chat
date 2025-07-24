@@ -23,14 +23,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.testWebhook = exports.healthCheck = exports.webhookSend = void 0;
+exports.healthCheck = exports.webhookSend = void 0;
 const admin = __importStar(require("firebase-admin"));
 const webhook_send_1 = require("./webhook-send");
 Object.defineProperty(exports, "webhookSend", { enumerable: true, get: function () { return webhook_send_1.webhookSend; } });
 const health_check_1 = require("./health-check");
 Object.defineProperty(exports, "healthCheck", { enumerable: true, get: function () { return health_check_1.healthCheck; } });
-const test_webhook_1 = require("./test-webhook");
-Object.defineProperty(exports, "testWebhook", { enumerable: true, get: function () { return test_webhook_1.testWebhook; } });
 // Initialize Firebase Admin SDK
 admin.initializeApp();
 //# sourceMappingURL=index.js.map

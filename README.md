@@ -232,8 +232,6 @@ Secure proxy for n8n webhook communication with authentication and error handlin
 #### `healthCheck`
 Monitor n8n webhook availability and connection status.
 
-#### `testWebhook`
-Diagnostic endpoint for webhook troubleshooting and debugging.
 
 ### Legacy API Routes (Compatibility)
 
