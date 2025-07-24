@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useFirebase } from '@/contexts/FirebaseContext';
@@ -21,6 +21,7 @@ import {
   Globe
 } from 'lucide-react';
 import { Modal } from './Modal';
+import { webhookClient } from '@/lib/webhook-client';
 
 interface ChatSidebarProps {
   className?: string;
@@ -35,6 +36,8 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
   const [editingChat, setEditingChat] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [isOnline, setIsOnline] = useState<boolean | null>(null);
+  const isInitialized = useRef(false);
 
   // Feature flag: Switch between Firebase and Redux
   const USE_FIREBASE = true; // Set to false to use Redux instead
@@ -48,6 +51,43 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
   const activeChat = USE_FIREBASE ? firebase.activeChat : reduxActiveChat;
   const chatsForActiveWebhook = USE_FIREBASE ? firebase.chats.filter(chat => chat.webhookId === activeWebhook?.id) : reduxChatsForActiveWebhook;
 
+  // Check webhook health
+  useEffect(() => {
+    const checkHealth = async () => {
+      if (!activeWebhook) {
+        console.log('ChatSidebar: No active webhook, setting offline');
+        setIsOnline(false);
+        return;
+      }
+
+      console.log('ChatSidebar: Checking health for webhook:', activeWebhook.name);
+      try {
+        const healthy = await webhookClient.checkHealth(activeWebhook as any);
+        console.log('ChatSidebar: Health check result:', healthy);
+        setIsOnline(healthy);
+      } catch (error) {
+        console.log('ChatSidebar: Health check error:', error);
+        setIsOnline(false);
+      }
+    };
+
+    // Run health check when activeWebhook changes or on initial load
+    if (activeWebhook) {
+      if (!isInitialized.current) {
+        isInitialized.current = true;
+      }
+      checkHealth();
+    } else {
+      setIsOnline(false);
+    }
+    
+    // Check health every 10 minutes (600000ms) - reduced frequency for external webhooks
+    const healthInterval = setInterval(checkHealth, 600000);
+
+    return () => {
+      clearInterval(healthInterval);
+    };
+  }, [activeWebhook]);
 
   const handleNewChat = async () => {
     if (!activeWebhook) return;
@@ -151,9 +191,41 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
                   </h2>
                 </div>
                 {activeWebhook && (
-                  <div className="flex items-center mt-1 text-xs" style={{ color: '#94a3b8' }}>
-                    <Webhook className="w-3 h-3 mr-1" />
-                    <span className="truncate">{activeWebhook.name}</span>
+                  <div className="flex items-center justify-between mt-1 text-xs" style={{ color: '#94a3b8' }}>
+                    <div className="flex items-center min-w-0 flex-1">
+                      <Webhook className="w-3 h-3 mr-1 flex-shrink-0" />
+                      <span className="truncate">{activeWebhook.name}</span>
+                    </div>
+                    {/* Connection status pill - DEBUG: isOnline={String(isOnline)} */}
+                    <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all duration-300 ml-2 flex-shrink-0 bg-blue-500 text-white">
+                      <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                      <span>DEBUG:{String(isOnline)}</span>
+                    </div>
+                    <div className={cn(
+                      "flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all duration-300 ml-2 flex-shrink-0",
+                      isOnline === true
+                        ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 shadow-emerald-200/50 dark:shadow-emerald-800/50 shadow-sm" 
+                        : isOnline === false
+                        ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 shadow-red-200/50 dark:shadow-red-800/50 shadow-sm"
+                        : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shadow-blue-200/50 dark:shadow-blue-800/50 shadow-sm"
+                    )}>
+                      {isOnline === true ? (
+                        <>
+                          <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse"></div>
+                          <span className="hidden sm:inline">Connected</span>
+                        </>
+                      ) : isOnline === false ? (
+                        <>
+                          <div className="w-1.5 h-1.5 bg-red-500 dark:bg-red-400 rounded-full"></div>
+                          <span className="hidden sm:inline">Offline</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-1.5 h-1.5 bg-blue-500 dark:bg-blue-400 rounded-full animate-spin"></div>
+                          <span className="hidden sm:inline">Checking</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

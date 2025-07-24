@@ -203,6 +203,14 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
       }
 
       setEditingWebhook(null);
+
+      // Run health check after saving webhook
+      if (USE_FIREBASE) {
+        // Trigger health check via Firebase context
+        setTimeout(() => {
+          firebase.checkWebhookHealth();
+        }, 500); // Small delay to allow webhook to be fully saved
+      }
     } catch (error) {
       alert(`Error saving webhook: ${(error as any)?.message || error}`);
     } finally {

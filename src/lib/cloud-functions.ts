@@ -88,13 +88,22 @@ export class CloudFunctionsClient {
    * Check health via Cloud Function
    */
   async checkHealth(webhookUrl?: string, secret?: string): Promise<any> {
-    const baseUrl = this.getUrl('healthCheck');
-    const url = new URL(baseUrl);
-    if (webhookUrl) url.searchParams.set('webhookUrl', webhookUrl);
-    if (secret) url.searchParams.set('apiSecret', secret);
+    try {
+      const baseUrl = this.getUrl('healthCheck');
+      const url = new URL(baseUrl);
+      if (webhookUrl) url.searchParams.set('webhookUrl', webhookUrl);
+      if (secret) url.searchParams.set('apiSecret', secret);
 
-    const response = await fetch(url.toString());
-    return response.json();
+      const response = await fetch(url.toString());
+      
+      if (!response.ok) {
+        return { status: 'unhealthy', error: `HTTP ${response.status}: ${response.statusText}` };
+      }
+      
+      return await response.json();
+    } catch (error) {
+      return { status: 'unhealthy', error: error instanceof Error ? error.message : 'Health check failed' };
+    }
   }
 
   /**

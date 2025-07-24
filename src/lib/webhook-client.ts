@@ -47,6 +47,18 @@ class WebhookClient {
 
   async checkHealth(webhookConfig?: WebhookConfig): Promise<boolean> {
     try {
+      // First, validate the webhook URL format
+      if (!webhookConfig?.url) {
+        return false;
+      }
+
+      // Basic URL validation
+      try {
+        new URL(webhookConfig.url);
+      } catch {
+        return false;
+      }
+
       // Use Cloud Functions health check
       const response = await cloudFunctions.checkHealth(
         webhookConfig?.url,

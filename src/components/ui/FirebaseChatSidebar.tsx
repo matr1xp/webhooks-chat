@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useFirebase } from '@/contexts/FirebaseContext';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,7 @@ import {
   Eraser
 } from 'lucide-react';
 import { Modal } from './Modal';
+import { webhookClient } from '@/lib/webhook-client';
 
 interface FirebaseChatSidebarProps {
   className?: string;
@@ -58,6 +59,26 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [editingChat, setEditingChat] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [isOnline, setIsOnline] = useState<boolean | null>(null);
+  const isInitialized = useRef(false);
+
+  // Expose health check function for external calls
+  const checkWebhookHealth = useCallback(async (webhook?: any) => {
+    const targetWebhook = webhook || activeWebhook;
+    if (!targetWebhook) {
+      setIsOnline(false);
+      return false;
+    }
+
+    try {
+      const healthy = await webhookClient.checkHealth(targetWebhook);
+      setIsOnline(healthy);
+      return healthy;
+    } catch (error) {
+      setIsOnline(false);
+      return false;
+    }
+  }, [activeWebhook]);
 
   // Filter chats for active webhook - memoized to prevent unnecessary re-renders
   const chatsForActiveWebhook = useMemo(() => 
@@ -164,6 +185,19 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
     return `${Math.floor(diffInMinutes / 1440)}d`;
   }, []);
 
+  // Check webhook health only on initial load or when webhook changes
+  useEffect(() => {
+    // Run health check when activeWebhook changes or on initial load
+    if (activeWebhook) {
+      if (!isInitialized.current) {
+        isInitialized.current = true;
+      }
+      checkWebhookHealth();
+    } else {
+      setIsOnline(false);
+    }
+  }, [activeWebhook, checkWebhookHealth]);
+
   return (
     <>
       <div className={cn(
@@ -174,7 +208,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
         className
       )}>
         {/* Header */}
-        <div className="flex-shrink-0 p-4 border-b border-slate-700 dark:border-slate-700">
+        <div className="flex-shrink-0 p-4 border-b border-slate-700 dark:border-slate-700 relative">
           <div className="flex items-center justify-between">
             {!isCollapsed && (
               <div className="flex-1 min-w-0">
@@ -192,15 +226,46 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
                   </h2>
                 </div>
                 {activeWebhook && (
-                  <div className="flex items-center mt-1 text-xs" style={{ color: '#94a3b8' }}>
-                    <Webhook className="w-3 h-3 mr-1" />
-                    <span className="truncate">{activeWebhook.name}</span>
+                  <div className="flex items-center mt-2 text-xs" style={{ color: '#94a3b8' }}>
+                    <div className="flex items-center min-w-0">
+                      <Webhook className="w-3 h-3 mr-1 flex-shrink-0" />
+                      <span>{activeWebhook.name}</span>
+                    </div>
                   </div>
                 )}
               </div>
             )}
             
-            <div className="flex items-center space-x-1">
+            {/* Connection status pill - positioned relative to full header */}
+            {activeWebhook && !isCollapsed && (
+              <div className={cn(
+                "absolute right-4 bottom-2 flex items-center space-x-1 px-1.5 py-0.5 rounded-full text-xs font-medium transition-all duration-300 flex-shrink-0",
+                      isOnline === true
+                        ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300" 
+                        : isOnline === false
+                        ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300"
+                        : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
+                    )}>
+                      {isOnline === true ? (
+                        <>
+                          <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse"></div>
+                          <span className="hidden lg:inline text-xs">Connected</span>
+                        </>
+                      ) : isOnline === false ? (
+                        <>
+                          <div className="w-1.5 h-1.5 bg-red-500 dark:bg-red-400 rounded-full"></div>
+                          <span className="hidden lg:inline text-xs">Offline</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-1.5 h-1.5 bg-blue-500 dark:bg-blue-400 rounded-full animate-spin"></div>
+                          <span className="hidden lg:inline text-xs">Checking</span>
+                        </>
+                      )}
+                </div>
+              )}
+            
+            <div className="flex items-center space-x-1 -mt-8">
               {!isCollapsed && (
                 <>
                   <button

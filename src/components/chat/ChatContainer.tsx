@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -46,9 +46,6 @@ export function ChatContainer({ className }: ChatContainerProps) {
 
 
   const [userId] = useState(() => generateUserId());
-  const [isOnline, setIsOnline] = useState<boolean | null>(null);
-  const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const isInitialized = useRef(false);
   
   // Redux file cache for persistent Base64 data storage
   const { cache: fileDataCache, setFileCacheData, cleanupCache } = useFileCache();
@@ -116,40 +113,6 @@ export function ChatContainer({ className }: ChatContainerProps) {
     }
   }, [messages, cleanupCache]);
 
-  // Check webhook health
-  useEffect(() => {
-    const checkHealth = async () => {
-      // Skip health check if currently sending a message to avoid interference
-      if (isSendingMessage || !activeWebhook) {
-        return;
-      }
-
-      try {
-        const healthy = await webhookClient.checkHealth(activeWebhook as any);
-        setIsOnline(healthy);
-      } catch (error) {
-        setIsOnline(false);
-      }
-    };
-
-    // Run health check when activeWebhook changes or on initial load
-    if (activeWebhook) {
-      if (!isInitialized.current) {
-        isInitialized.current = true;
-      }
-      checkHealth();
-    } else {
-      // No active webhook, set offline
-      setIsOnline(false);
-    }
-    
-    // Check health every 10 minutes (600000ms) - reduced frequency for external webhooks
-    const healthInterval = setInterval(checkHealth, 600000);
-
-    return () => {
-      clearInterval(healthInterval);
-    };
-  }, [isSendingMessage, activeWebhook]);
 
   const handleSendMessage = async (
     content: string, 
@@ -170,7 +133,6 @@ export function ChatContainer({ className }: ChatContainerProps) {
 
     try {
       setError(null);
-      setIsSendingMessage(true); // Prevent health checks during message sending
       
       const sanitizedContent = sanitizeInput(content);
       
@@ -248,7 +210,7 @@ export function ChatContainer({ className }: ChatContainerProps) {
           if (response.botMessage && response.botMessage.content) {
             if (USE_FIREBASE) {
               // Use Firebase bot message method
-              const botMessage = await firebase.addBotMessage(
+              await firebase.addBotMessage(
                 response.botMessage.content,
                 response.botMessage.metadata
               );
@@ -271,16 +233,25 @@ export function ChatContainer({ className }: ChatContainerProps) {
         } else {
           updateMessageStatus(message.id, 'failed');
           setError(response.error || 'Webhook returned an error response');
+          
+          // Run health check when webhook send fails
+          if (USE_FIREBASE) {
+            firebase.checkWebhookHealth();
+          }
         }
       } catch (webhookError) {
         updateMessageStatus(message.id, 'failed');
         setError('Failed to connect to webhook service');
+        
+        // Run health check when webhook send throws error
+        if (USE_FIREBASE) {
+          firebase.checkWebhookHealth();
+        }
       }
     } catch (error) {
       setError('An unexpected error occurred');
     } finally {
       setLoading(false);
-      setIsSendingMessage(false); // Re-enable health checks
     }
   };
 
@@ -312,33 +283,6 @@ export function ChatContainer({ className }: ChatContainerProps) {
             <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
               {/* Theme Toggle */}
               <ThemeToggle />
-              
-              {/* Connection status - modernized */}
-              <div className={cn(
-                "flex items-center space-x-1 sm:space-x-2 px-2 py-1 rounded-full text-xs font-medium transition-all duration-300",
-                isOnline === true
-                  ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 shadow-emerald-200/50 dark:shadow-emerald-800/50 shadow-sm" 
-                  : isOnline === false
-                  ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 shadow-red-200/50 dark:shadow-red-800/50 shadow-sm"
-                  : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shadow-blue-200/50 dark:shadow-blue-800/50 shadow-sm"
-              )}>
-                {isOnline === true ? (
-                  <>
-                    <div className="w-2 h-2 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse"></div>
-                    <span className="hidden sm:inline">Connected</span>
-                  </>
-                ) : isOnline === false ? (
-                  <>
-                    <div className="w-2 h-2 bg-red-500 dark:bg-red-400 rounded-full"></div>
-                    <span className="hidden sm:inline">Disconnected</span>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full animate-spin"></div>
-                    <span className="hidden sm:inline">Checking...</span>
-                  </>
-                )}
-              </div>
             </div>
           </div>
         </div>

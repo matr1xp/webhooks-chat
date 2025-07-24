@@ -1,9 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode, useCallback } from 'react';
 import { useFirestoreAuth } from '@/lib/hooks/useFirestoreAuth';
 import { useFirestoreConfig } from '@/lib/hooks/useFirestoreConfig';
 import { useFirestoreChat } from '@/lib/hooks/useFirestoreChat';
+import { webhookClient } from '@/lib/webhook-client';
 import type { FirestoreUser, FirestoreWebhook, FirestoreChat } from '@/lib/firestore/types';
 import type { Message } from '@/types/chat';
 
@@ -27,6 +28,7 @@ interface FirebaseContextType {
   addWebhook: (name: string, url: string, secret?: string) => Promise<FirestoreWebhook>;
   updateWebhook: (webhookId: string, updates: Partial<Omit<FirestoreWebhook, 'id' | 'createdAt'>>) => Promise<void>;
   deleteWebhook: (webhookId: string) => Promise<void>;
+  checkWebhookHealth: (webhook?: FirestoreWebhook) => Promise<boolean>;
   configLoading: boolean;
   configError: string | null;
   
@@ -98,6 +100,20 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
     error: chatError,
   } = useFirestoreChat(user?.uid || null, activeWebhook?.id || null);
 
+  // Health check function
+  const checkWebhookHealth = useCallback(async (webhook?: FirestoreWebhook): Promise<boolean> => {
+    const targetWebhook = webhook || activeWebhook;
+    if (!targetWebhook) {
+      return false;
+    }
+
+    try {
+      return await webhookClient.checkHealth(targetWebhook);
+    } catch (error) {
+      return false;
+    }
+  }, [activeWebhook]);
+
   const value: FirebaseContextType = {
     // Authentication
     user,
@@ -118,6 +134,7 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
     addWebhook,
     updateWebhook,
     deleteWebhook,
+    checkWebhookHealth,
     configLoading,
     configError,
     
