@@ -405,7 +405,10 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
               </div>
             )}
             
-            <div className="flex items-center space-x-2 md:space-x-1 -mt-8">
+            <div className={cn(
+              "flex items-center space-x-2 md:space-x-1",
+              isCollapsed ? "mt-2" : "-mt-8"
+            )}>
               {!isCollapsed && (
                 <>
                   <button
@@ -414,7 +417,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                     className={cn(
                       'p-3 md:p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center',
                       'hover:bg-slate-200 dark:hover:bg-slate-800 active:bg-slate-300 dark:active:bg-slate-700',
-                      'disabled:opacity-50 disabled:cursor-not-allowed'
+                      'disabled:opacity-50 disabled:cursor-not-allowed',
                     )}
                     title="New Chat"
                   >
@@ -689,16 +692,16 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
             <button
               onClick={onMobileClose}
               className={cn(
-                "px-8 py-4 rounded-full border-2 border-slate-400 dark:border-slate-500 transition-all duration-200",
-                "bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600",
-                "hover:border-slate-500 dark:hover:border-slate-400",
-                "active:scale-95 active:bg-slate-200 dark:active:bg-slate-500",
+                "px-8 py-4 rounded-full border-2 border-slate-400 dark:border-slate-400 transition-all duration-200",
+                "bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700",
+                "hover:border-slate-500 dark:hover:border-slate-300",
+                "active:scale-95 active:bg-slate-200 dark:active:bg-slate-600",
                 "shadow-lg hover:shadow-xl touch-manipulation flex items-center space-x-3"
               )}
               title="Close Menu"
             >
-              <X className="w-6 h-6" style={{ color: theme === 'light' ? '#f1f5f9' : '#f1f5f9' }} />
-              <span className="text-base font-medium" style={{ color: theme === 'light' ? '#f1f5f9' : '#f1f5f9' }}>Close</span>
+              <X className="w-6 h-6" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
+              <span className="text-base font-medium" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>Close</span>
             </button>
           </div>
         )}
