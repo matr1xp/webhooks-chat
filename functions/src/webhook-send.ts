@@ -179,15 +179,65 @@ export const webhookSend = onRequest({
       let botMessage;
       
       const extractStringValue = (obj: any): string | null => {
+        const isHtmlContent = (str: string): boolean => {
+          // Check for common HTML tags that indicate HTML content
+          const htmlTagRegex = /<(iframe|html|head|body|div|p|span|script|style)[^>]*>/i;
+          return htmlTagRegex.test(str.trim());
+        };
+
+        const sanitizeString = (str: string): string => {
+          // Remove HTML tags and decode HTML entities
+          return str
+            .replace(/<[^>]*>/g, '') // Remove HTML tags
+            .replace(/&lt;/g, '<')   // Decode HTML entities
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .replace(/&#x27;/g, "'")
+            .trim();
+        };
+
         if (typeof obj === 'string') {
-          return obj;
+          const trimmedStr = obj.trim();
+          if (trimmedStr.length === 0) {
+            return null;
+          }
+          
+          // If it's HTML content, try to extract text content
+          if (isHtmlContent(trimmedStr)) {
+            const sanitized = sanitizeString(trimmedStr);
+            // Only return if there's meaningful text content after sanitization
+            if (sanitized.length > 0 && !isHtmlContent(sanitized)) {
+              console.log('Extracted text from HTML content');
+              return sanitized;
+            } else {
+              console.log('Rejecting HTML content with no meaningful text');
+              return null;
+            }
+          }
+          
+          return trimmedStr;
         }
         
         if (typeof obj === 'object' && obj !== null) {
           for (const [key, value] of Object.entries(obj)) {
             if (typeof value === 'string' && value.trim().length > 0) {
+              const trimmedValue = value.trim();
+              
+              // If it's HTML content, try to extract text content
+              if (isHtmlContent(trimmedValue)) {
+                const sanitized = sanitizeString(trimmedValue);
+                // Only return if there's meaningful text content after sanitization
+                if (sanitized.length > 0 && !isHtmlContent(sanitized)) {
+                  console.log(`Extracted text from HTML content in key "${key}"`);
+                  return sanitized;
+                }
+                // Skip this value if it's HTML without meaningful text
+                continue;
+              }
+              
               console.log(`Extracted bot response from key "${key}"`);
-              return value;
+              return trimmedValue;
             }
           }
         }

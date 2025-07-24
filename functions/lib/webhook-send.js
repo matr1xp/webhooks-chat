@@ -19,6 +19,15 @@ function validateWebhookPayload(body) {
         !['text', 'file', 'image'].includes(body.message.type)) {
         return null;
     }
+    // Optional file data validation
+    if (body.message.file) {
+        if (typeof body.message.file.name !== 'string' ||
+            typeof body.message.file.size !== 'number' ||
+            typeof body.message.file.type !== 'string' ||
+            typeof body.message.file.data !== 'string') {
+            return null;
+        }
+    }
     // Optional webhook configuration validation
     if (body.webhookUrl && typeof body.webhookUrl !== 'string') {
         return null;
@@ -116,14 +125,59 @@ exports.webhookSend = (0, https_1.onRequest)({
             // Extract bot message from n8n response
             let botMessage;
             const extractStringValue = (obj) => {
+                const isHtmlContent = (str) => {
+                    // Check for common HTML tags that indicate HTML content
+                    const htmlTagRegex = /<(iframe|html|head|body|div|p|span|script|style)[^>]*>/i;
+                    return htmlTagRegex.test(str.trim());
+                };
+                const sanitizeString = (str) => {
+                    // Remove HTML tags and decode HTML entities
+                    return str
+                        .replace(/<[^>]*>/g, '') // Remove HTML tags
+                        .replace(/&lt;/g, '<') // Decode HTML entities
+                        .replace(/&gt;/g, '>')
+                        .replace(/&amp;/g, '&')
+                        .replace(/&quot;/g, '"')
+                        .replace(/&#x27;/g, "'")
+                        .trim();
+                };
                 if (typeof obj === 'string') {
-                    return obj;
+                    const trimmedStr = obj.trim();
+                    if (trimmedStr.length === 0) {
+                        return null;
+                    }
+                    // If it's HTML content, try to extract text content
+                    if (isHtmlContent(trimmedStr)) {
+                        const sanitized = sanitizeString(trimmedStr);
+                        // Only return if there's meaningful text content after sanitization
+                        if (sanitized.length > 0 && !isHtmlContent(sanitized)) {
+                            console.log('Extracted text from HTML content');
+                            return sanitized;
+                        }
+                        else {
+                            console.log('Rejecting HTML content with no meaningful text');
+                            return null;
+                        }
+                    }
+                    return trimmedStr;
                 }
                 if (typeof obj === 'object' && obj !== null) {
                     for (const [key, value] of Object.entries(obj)) {
                         if (typeof value === 'string' && value.trim().length > 0) {
+                            const trimmedValue = value.trim();
+                            // If it's HTML content, try to extract text content
+                            if (isHtmlContent(trimmedValue)) {
+                                const sanitized = sanitizeString(trimmedValue);
+                                // Only return if there's meaningful text content after sanitization
+                                if (sanitized.length > 0 && !isHtmlContent(sanitized)) {
+                                    console.log(`Extracted text from HTML content in key "${key}"`);
+                                    return sanitized;
+                                }
+                                // Skip this value if it's HTML without meaningful text
+                                continue;
+                            }
                             console.log(`Extracted bot response from key "${key}"`);
-                            return value;
+                            return trimmedValue;
                         }
                     }
                 }
