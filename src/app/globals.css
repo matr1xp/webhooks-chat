@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "katex/dist/katex.min.css";
 
 /* Custom font declarations */
 @font-face {
@@ -357,6 +358,27 @@
   
   .transition-bounce {
     transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  /* Enhanced light mode hover states for better text visibility */
+  .light .hover-enhanced:hover {
+    background-color: rgb(226 232 240) !important; /* slate-200 */
+    color: rgb(15 23 42) !important; /* slate-900 for better contrast */
+  }
+  
+  .light .hover-enhanced-light:hover {
+    background-color: rgb(241 245 249) !important; /* slate-100 */
+    color: rgb(15 23 42) !important; /* slate-900 for better contrast */
+  }
+  
+  .dark .hover-enhanced:hover {
+    background-color: rgb(51 65 85) !important; /* slate-700 */
+    color: rgb(226 232 240) !important; /* slate-200 */
+  }
+  
+  .dark .hover-enhanced-light:hover {
+    background-color: rgb(51 65 85) !important; /* slate-700 */
+    color: rgb(226 232 240) !important; /* slate-200 */
   }
 }
 

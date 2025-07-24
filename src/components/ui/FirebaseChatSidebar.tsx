@@ -246,19 +246,23 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
         />
       )}
 
-      <div className={cn(
-        'flex flex-col h-full transition-all duration-300 shadow-lg relative',
-        'bg-slate-800 dark:bg-slate-900 backdrop-blur-xl',
-        // Desktop: Normal sidebar behavior with border-r
-        'md:border-r md:border-slate-700 md:dark:border-slate-700',
-        // Mobile: Full screen when open, hidden when closed
-        isMobileOpen ? 'fixed inset-0 z-50 w-full h-full flex' : 'hidden md:flex',
-        // Desktop width when not mobile
-        !isMobileOpen && (isCollapsed ? 'w-16' : 'w-80'),
-        className
-      )}>
+      <div 
+        className={cn(
+          'flex flex-col h-full transition-all duration-300 shadow-lg relative backdrop-blur-xl',
+          // Desktop: Normal sidebar behavior with border-r
+          'md:border-r border-slate-300 dark:border-slate-700',
+          // Mobile: Full screen when open, hidden when closed
+          isMobileOpen ? 'fixed inset-0 z-50 w-full h-full flex' : 'hidden md:flex',
+          // Desktop width when not mobile
+          !isMobileOpen && (isCollapsed ? 'w-16' : 'w-80'),
+          className
+        )}
+        style={{
+          backgroundColor: theme === 'light' ? '#f8fafc' : '#0f172a'
+        }}
+      >
         {/* Header */}
-        <div className="flex-shrink-0 p-6 md:p-4 border-b border-slate-700 dark:border-slate-700 relative">
+        <div className="flex-shrink-0 p-6 md:p-4 border-b border-slate-300 dark:border-slate-700 relative">
           <div className="flex items-center justify-between">
             {!isCollapsed && (
               <div className="flex-1 min-w-0">
@@ -271,7 +275,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                     className="flex-shrink-0 md:w-6 md:h-6"
                     style={{ width: 'auto', height: '28px' }}
                   />
-                  <h2 className="text-xl md:text-lg font-semibold truncate" style={{ color: '#f1f5f9' }}>
+                  <h2 className="text-xl md:text-lg font-semibold truncate" style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}>
                     WebhookIQ
                   </h2>
                 </div>
@@ -320,11 +324,11 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                             onClick={() => setIsWebhookSelectorOpen(!isWebhookSelectorOpen)}
                             className={cn(
                               "flex items-center text-left text-xs px-2 py-1 rounded transition-colors mr-2",
-                              "hover:bg-slate-700 dark:hover:bg-slate-700 touch-manipulation",
+                              "hover:bg-slate-200 dark:hover:bg-slate-700 touch-manipulation",
                               "focus:outline-none focus:ring-1 focus:ring-blue-500",
-                              isWebhookSelectorOpen && "bg-slate-700 dark:bg-slate-700"
+                              isWebhookSelectorOpen && "bg-slate-200 dark:bg-slate-700"
                             )}
-                            style={{ color: '#94a3b8' }}
+                            style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}
                           >
                             <Webhook className="w-3 h-3 mr-1 flex-shrink-0" />
                             <span className="flex-1 truncate">{activeWebhook?.name || 'Select Webhook'}</span>
@@ -368,7 +372,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
 
                         {/* Dropdown Menu */}
                         {isWebhookSelectorOpen && (
-                          <div className="absolute left-0 right-0 top-full mt-1 bg-slate-800 dark:bg-slate-800 border border-slate-700 dark:border-slate-700 rounded-lg shadow-lg z-[70] max-h-48 overflow-y-auto">
+                          <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-lg z-[70] max-h-48 overflow-y-auto">
                             {webhooks.map((webhook) => (
                               <button
                                 key={webhook.id}
@@ -378,14 +382,14 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                                 }}
                                 className={cn(
                                   "w-full text-left px-3 py-2 text-xs transition-colors touch-manipulation",
-                                  "hover:bg-slate-700 dark:hover:bg-slate-700",
-                                  "active:bg-slate-600 dark:active:bg-slate-600",
+                                  "hover:bg-slate-100 dark:hover:bg-slate-700",
+                                  "active:bg-slate-200 dark:active:bg-slate-600",
                                   "first:rounded-t-lg last:rounded-b-lg",
                                   "flex items-center",
                                   webhook.id === activeWebhook?.id && "bg-blue-600 text-white"
                                 )}
                                 style={{ 
-                                  color: webhook.id === activeWebhook?.id ? '#ffffff' : '#f1f5f9'
+                                  color: webhook.id === activeWebhook?.id ? '#ffffff' : (theme === 'light' ? '#374151' : '#f1f5f9')
                                 }}
                               >
                                 <Webhook className="w-3 h-3 mr-2 flex-shrink-0" />
@@ -409,31 +413,31 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                     disabled={!activeWebhook}
                     className={cn(
                       'p-3 md:p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center',
-                      'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700',
+                      'hover:bg-slate-200 dark:hover:bg-slate-800 active:bg-slate-300 dark:active:bg-slate-700',
                       'disabled:opacity-50 disabled:cursor-not-allowed'
                     )}
                     title="New Chat"
                   >
-                    <Plus className="w-5 h-5 md:w-4 md:h-4" style={{ color: '#94a3b8' }} />
+                    <Plus className="w-5 h-5 md:w-4 md:h-4" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
                   </button>
                   <button
                     onClick={handleCleanupEmptyChats}
                     disabled={!activeWebhook}
                     className={cn(
                       'p-3 md:p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center',
-                      'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700',
+                      'hover:bg-slate-200 dark:hover:bg-slate-800 active:bg-slate-300 dark:active:bg-slate-700',
                       'disabled:opacity-50 disabled:cursor-not-allowed'
                     )}
                     title="Cleanup Empty Chats"
                   >
-                    <Eraser className="w-5 h-5 md:w-4 md:h-4" style={{ color: '#94a3b8' }} />
+                    <Eraser className="w-5 h-5 md:w-4 md:h-4" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
                   </button>
                   <button
                     onClick={onConfigOpen}
-                    className="p-3 md:p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center"
+                    className="p-3 md:p-2 rounded-lg transition-colors hover:bg-slate-200 dark:hover:bg-slate-800 active:bg-slate-300 dark:active:bg-slate-700 min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center"
                     title="Settings"
                   >
-                    <Settings className="w-5 h-5 md:w-4 md:h-4" style={{ color: '#94a3b8' }} />
+                    <Settings className="w-5 h-5 md:w-4 md:h-4" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
                   </button>
                 </>
               )}
@@ -441,14 +445,14 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
               <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
                 className={cn(
-                  'p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 hidden md:block'
+                  'p-2 rounded-lg transition-colors hover:bg-slate-200 dark:hover:bg-slate-800 hidden md:block'
                 )}
                 title={isCollapsed ? 'Expand' : 'Collapse'}
               >
                 {isCollapsed ? (
-                  <ChevronRight className="w-4 h-4" style={{ color: '#94a3b8' }} />
+                  <ChevronRight className="w-4 h-4" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
                 ) : (
-                  <ChevronLeft className="w-4 h-4" style={{ color: '#94a3b8' }} />
+                  <ChevronLeft className="w-4 h-4" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
                 )}
               </button>
             </div>
@@ -491,7 +495,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
             <div
               key={chat.id}
               className={cn(
-                'relative group cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-b-0',
+                'relative group cursor-pointer border-b border-slate-200 dark:border-slate-800 last:border-b-0',
                 'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors',
                 chat.id === activeChat?.id && 'bg-blue-50 dark:bg-blue-900/20 border-r-2 border-r-blue-500'
               )}
@@ -547,14 +551,14 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                         <div className="relative chat-menu">
                           <button
                             onClick={(e) => toggleChatMenu(chat.id, e)}
-                            className="p-2 md:p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-slate-300 dark:active:bg-slate-600 transition-colors min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center"
+                            className="p-2 md:p-1 rounded hover:bg-slate-300 dark:hover:bg-slate-700 active:bg-slate-400 dark:active:bg-slate-600 transition-colors min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center"
                             aria-label="More options"
                           >
                             <MoreVertical className="w-4 h-4 md:w-3 md:h-3" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
                           </button>
                           
                           <div className={cn(
-                            "absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-[60] min-w-[120px]",
+                            "absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-300 dark:border-slate-700 py-1 z-[60] min-w-[120px]",
                             openChatMenu === chat.id ? "flex flex-col" : "hidden md:group-hover:flex md:flex-col"
                           )}>
                             <button
@@ -563,10 +567,10 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                                 handleEditChat(chat.id, chat.name);
                                 closeChatMenu();
                               }}
-                              className="px-4 py-3 md:px-3 md:py-2 text-sm md:text-xs text-left flex items-center transition-colors hover:bg-slate-50 dark:hover:bg-slate-700 active:bg-slate-100 dark:active:bg-slate-600 min-h-[44px] md:min-h-auto"
-                              style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}
+                              className="px-4 py-3 md:px-3 md:py-2 text-sm md:text-xs text-left flex items-center transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 active:bg-slate-200 dark:active:bg-slate-600 min-h-[44px] md:min-h-auto"
+                              style={{ color: theme === 'light' ? '#f1f5f9' : '#94a3b8' }}
                             >
-                              <Edit3 className="w-4 h-4 md:w-3 md:h-3 mr-3 md:mr-2 flex-shrink-0" />
+                              <Edit3 className="w-4 h-4 md:w-3 md:h-3 mr-3 md:mr-2 flex-shrink-0" style={{ color: theme === 'light' ? '#f1f5f9' : '#94a3b8' }} />
                               Rename
                             </button>
                             <button
@@ -593,7 +597,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
 
 
         {/* User Profile Section */}
-        <div className="flex-shrink-0 border-t border-slate-700 dark:border-slate-700">
+        <div className="flex-shrink-0 border-t border-slate-300 dark:border-slate-700">
           {isCollapsed ? (
             <div className="p-3 flex justify-center">
               <div className="relative">
@@ -652,11 +656,11 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <p className="text-base md:text-sm font-medium truncate" style={{ color: '#f1f5f9' }}>
+                  <p className="text-base md:text-sm font-medium truncate" style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}>
                     {user?.displayName || userProfile?.profile?.name || 'User'}
                   </p>
                   {user?.email && (
-                    <p className="text-sm md:text-xs truncate" style={{ color: '#94a3b8' }}>
+                    <p className="text-sm md:text-xs truncate" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>
                       {user.email}
                     </p>
                   )}
@@ -664,10 +668,10 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                 
                 <button
                   onClick={handleSignOutClick}
-                  className="p-3 md:p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 flex-shrink-0 min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center"
+                  className="p-3 md:p-2 rounded-lg transition-colors hover:bg-slate-200 dark:hover:bg-slate-800 active:bg-slate-300 dark:active:bg-slate-700 flex-shrink-0 min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center"
                   title="Sign Out"
                 >
-                  <LogOut className="w-5 h-5 md:w-4 md:h-4" style={{ color: '#94a3b8' }} />
+                  <LogOut className="w-5 h-5 md:w-4 md:h-4" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
                 </button>
               </div>
             </div>
@@ -676,20 +680,25 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
 
         {/* Mobile Close Button - Bottom Position */}
         {isMobileOpen && (
-          <div className="flex-shrink-0 p-6 border-t border-slate-700 dark:border-slate-700 md:hidden flex justify-center bg-slate-800 dark:bg-slate-900">
+          <div 
+            className="flex-shrink-0 p-6 border-t border-slate-300 dark:border-slate-700 md:hidden flex justify-center"
+            style={{
+              backgroundColor: theme === 'light' ? '#f8fafc' : '#0f172a'
+            }}
+          >
             <button
               onClick={onMobileClose}
               className={cn(
                 "px-8 py-4 rounded-full border-2 border-slate-400 dark:border-slate-500 transition-all duration-200",
-                "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600",
+                "bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600",
                 "hover:border-slate-500 dark:hover:border-slate-400",
-                "active:scale-95 active:bg-slate-300 dark:active:bg-slate-500",
+                "active:scale-95 active:bg-slate-200 dark:active:bg-slate-500",
                 "shadow-lg hover:shadow-xl touch-manipulation flex items-center space-x-3"
               )}
               title="Close Menu"
             >
-              <X className="w-6 h-6" style={{ color: '#374151' }} />
-              <span className="text-base font-medium" style={{ color: '#374151' }}>Close</span>
+              <X className="w-6 h-6" style={{ color: theme === 'light' ? '#f1f5f9' : '#f1f5f9' }} />
+              <span className="text-base font-medium" style={{ color: theme === 'light' ? '#f1f5f9' : '#f1f5f9' }}>Close</span>
             </button>
           </div>
         )}
@@ -710,7 +719,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
           <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
             <button
               onClick={() => setShowDeleteModal(null)}
-              className="w-full sm:w-auto px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              className="w-full sm:w-auto px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}
             >
               Cancel
@@ -739,7 +748,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
           <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
             <button
               onClick={() => setShowSignOutModal(false)}
-              className="w-full sm:w-auto px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              className="w-full sm:w-auto px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}
             >
               Cancel

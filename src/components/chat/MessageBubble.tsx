@@ -7,6 +7,8 @@ import { useFirebase } from '@/contexts/FirebaseContext';
 import { Check, CheckCheck, X, Clock, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 interface MessageBubbleProps {
   message: Message;
@@ -19,6 +21,62 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
   const { user } = useFirebase();
   // Determine if this is a user message (default to true if not explicitly set)
   const actualIsUser = isUser !== undefined ? isUser : !message.isBot;
+
+  // Function to preprocess LaTeX expressions
+  const preprocessLatex = (content: string): string => {
+    let processedContent = content;
+
+    // Replace common LaTeX expressions with wrapped versions
+    const replacements = [
+      // Fractions
+      { pattern: /\\frac\{([^}]*)\}\{([^}]*)\}/g, replacement: '$\\frac{$1}{$2}$' },
+      
+      // Common symbols
+      { pattern: /\\times/g, replacement: '$\\times$' },
+      { pattern: /\\div/g, replacement: '$\\div$' },
+      { pattern: /\\approx/g, replacement: '$\\approx$' },
+      { pattern: /\\cdot/g, replacement: '$\\cdot$' },
+      { pattern: /\\ldots/g, replacement: '$\\ldots$' },
+      { pattern: /\\pm/g, replacement: '$\\pm$' },
+      { pattern: /\\mp/g, replacement: '$\\mp$' },
+      
+      // Comparison operators
+      { pattern: /\\leq/g, replacement: '$\\leq$' },
+      { pattern: /\\geq/g, replacement: '$\\geq$' },
+      { pattern: /\\neq/g, replacement: '$\\neq$' },
+      { pattern: /\\equiv/g, replacement: '$\\equiv$' },
+      
+      // Special symbols
+      { pattern: /\\infty/g, replacement: '$\\infty$' },
+      { pattern: /\\pi/g, replacement: '$\\pi$' },
+      
+      // Greek letters
+      { pattern: /\\alpha/g, replacement: '$\\alpha$' },
+      { pattern: /\\beta/g, replacement: '$\\beta$' },
+      { pattern: /\\gamma/g, replacement: '$\\gamma$' },
+      { pattern: /\\delta/g, replacement: '$\\delta$' },
+      { pattern: /\\epsilon/g, replacement: '$\\epsilon$' },
+      { pattern: /\\theta/g, replacement: '$\\theta$' },
+      { pattern: /\\lambda/g, replacement: '$\\lambda$' },
+      { pattern: /\\mu/g, replacement: '$\\mu$' },
+      { pattern: /\\sigma/g, replacement: '$\\sigma$' },
+      
+      // Functions
+      { pattern: /\\sqrt\{([^}]*)\}/g, replacement: '$\\sqrt{$1}$' },
+      { pattern: /\\sum/g, replacement: '$\\sum$' },
+      { pattern: /\\int/g, replacement: '$\\int$' }
+    ];
+
+    // Apply all replacements
+    replacements.forEach(({ pattern, replacement }) => {
+      processedContent = processedContent.replace(pattern, replacement);
+    });
+
+    // Clean up any double dollar signs
+    processedContent = processedContent.replace(/\$\$+/g, '$');
+
+    return processedContent;
+  };
 
   // Helper function to get Base64 data from cache or message
   const getFileData = (message: Message) => {
@@ -194,8 +252,9 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
                 <div className="text-sm markdown-content" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>
                   {message.content && typeof message.content === 'string' ? (
                     <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
-                    components={{
+                      remarkPlugins={[remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
+                      components={{
                       // Custom styling for markdown elements in bot messages
                       p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>{children}</p>,
                       strong: ({ children }) => <strong className="font-semibold" style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}>{children}</strong>,
@@ -266,7 +325,7 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
                       ),
                     }}
                   >
-                      {message.content}
+                      {preprocessLatex(message.content)}
                     </ReactMarkdown>
                   ) : (
                     <div className="text-sm" style={{ color: theme === 'light' ? '#ef4444' : '#f87171' }}>
