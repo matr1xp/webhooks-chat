@@ -6,6 +6,7 @@ import { useFirestoreConfig } from '@/lib/hooks/useFirestoreConfig';
 import { useFirestoreChat } from '@/lib/hooks/useFirestoreChat';
 import { webhookClient } from '@/lib/webhook-client';
 import type { FirestoreUser, FirestoreWebhook, FirestoreChat } from '@/lib/firestore/types';
+import { convertTimestamp } from '@/lib/firestore/types';
 import type { Message } from '@/types/chat';
 
 interface FirebaseContextType {
@@ -108,7 +109,16 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
     }
 
     try {
-      return await webhookClient.checkHealth(targetWebhook);
+      // Convert FirestoreWebhook to WebhookConfig format
+      const webhookConfig = {
+        id: targetWebhook.id,
+        name: targetWebhook.name,
+        url: targetWebhook.url,
+        apiSecret: targetWebhook.secret,
+        isActive: targetWebhook.isActive,
+        createdAt: convertTimestamp(targetWebhook.createdAt),
+      };
+      return await webhookClient.checkHealth(webhookConfig);
     } catch (error) {
       return false;
     }

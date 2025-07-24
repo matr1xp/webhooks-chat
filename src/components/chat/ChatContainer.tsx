@@ -13,14 +13,15 @@ import { webhookClient } from '@/lib/webhook-client';
 import { WebhookPayload } from '@/types/chat';
 import { generateSessionId, generateUserId, sanitizeInput } from '@/lib/utils';
 import { cn } from '@/lib/utils';
-import { AlertCircle, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { AlertCircle, Wifi, WifiOff, RefreshCw, Menu } from 'lucide-react';
 import { useFileCache } from '@/hooks/useFileCache';
 
 interface ChatContainerProps {
   className?: string;
+  onMobileSidebarOpen?: () => void;
 }
 
-export function ChatContainer({ className }: ChatContainerProps) {
+export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerProps) {
   const { theme } = useTheme();
   const { store } = useConfig();
   
@@ -270,6 +271,19 @@ export function ChatContainer({ className }: ChatContainerProps) {
       <div className="flex-shrink-0 border-b shadow-sm z-20 relative chat-header">
         <div className="p-4 sm:p-6">
           <div className="flex items-center justify-between">
+            {/* Mobile Sidebar Button */}
+            <button
+              onClick={onMobileSidebarOpen}
+              className={cn(
+                'p-2 rounded-lg transition-colors touch-manipulation md:hidden mr-3',
+                'hover:bg-slate-100 dark:hover:bg-slate-800',
+                'active:scale-95 active:bg-slate-200 dark:active:bg-slate-700'
+              )}
+              title="Open Menu"
+            >
+              <Menu className="w-5 h-5" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }} />
+            </button>
+
             <div className="min-w-0 flex-1">
               <h1 className="text-lg sm:text-xl font-bold truncate" style={{ color: theme === 'light' ? '#000000' : '#f1f5f9' }}>
                 {activeChat?.name || 'Select a Chat'}

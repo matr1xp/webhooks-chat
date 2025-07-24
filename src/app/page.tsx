@@ -16,6 +16,7 @@ import { WorkingFirebaseTest } from '@/components/debug/WorkingFirebaseTest';
 
 export default function Home() {
   const [showConfig, setShowConfig] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
   // Feature flag: Switch between Firebase and Redux
   const USE_FIREBASE = true; // Set to false to use Redux instead
@@ -47,14 +48,24 @@ export default function Home() {
     <main className="h-screen flex overflow-hidden">
       {/* Sidebar */}
       {USE_FIREBASE ? (
-        <FirebaseChatSidebar onConfigOpen={() => setShowConfig(true)} />
+        <FirebaseChatSidebar 
+          onConfigOpen={() => setShowConfig(true)}
+          isMobileOpen={isMobileSidebarOpen}
+          onMobileClose={() => setIsMobileSidebarOpen(false)}
+        />
       ) : (
-        <ChatSidebar onConfigOpen={() => setShowConfig(true)} />
+        <ChatSidebar 
+          onConfigOpen={() => setShowConfig(true)}
+          isMobileOpen={isMobileSidebarOpen}
+          onMobileClose={() => setIsMobileSidebarOpen(false)}
+        />
       )}
       
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        <ChatContainer />
+        <ChatContainer 
+          onMobileSidebarOpen={() => setIsMobileSidebarOpen(true)}
+        />
       </div>
 
       {/* Configuration Modal */}

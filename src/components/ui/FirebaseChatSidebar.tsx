@@ -18,7 +18,8 @@ import {
   Globe,
   LogOut,
   User,
-  Eraser
+  Eraser,
+  X
 } from 'lucide-react';
 import { Modal } from './Modal';
 import { webhookClient } from '@/lib/webhook-client';
@@ -26,9 +27,11 @@ import { webhookClient } from '@/lib/webhook-client';
 interface FirebaseChatSidebarProps {
   className?: string;
   onConfigOpen?: () => void;
+  isMobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSidebarProps) {
+export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = false, onMobileClose }: FirebaseChatSidebarProps) {
   const { theme } = useTheme();
   const {
     // Auth
@@ -61,6 +64,8 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
   const [editName, setEditName] = useState('');
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const isInitialized = useRef(false);
+  const [isWebhookSelectorOpen, setIsWebhookSelectorOpen] = useState(false);
+  const [openChatMenu, setOpenChatMenu] = useState<string | null>(null);
 
   // Expose health check function for external calls
   const checkWebhookHealth = useCallback(async (webhook?: any) => {
@@ -107,7 +112,13 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
 
   const handleChatSelect = useCallback((chatId: string) => {
     setActiveChat(chatId);
-  }, [setActiveChat]);
+    // Close any open chat menus
+    setOpenChatMenu(null);
+    // Close mobile sidebar after selection
+    if (isMobileOpen && onMobileClose) {
+      onMobileClose();
+    }
+  }, [setActiveChat, isMobileOpen, onMobileClose]);
 
   const handleDeleteChat = useCallback(async (chatId: string) => {
     try {
@@ -151,6 +162,15 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
     setEditName('');
   }, []);
 
+  const toggleChatMenu = useCallback((chatId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setOpenChatMenu(prev => prev === chatId ? null : chatId);
+  }, []);
+
+  const closeChatMenu = useCallback(() => {
+    setOpenChatMenu(null);
+  }, []);
+
   const handleCleanupEmptyChats = useCallback(async () => {
     if (!activeWebhook) return;
     
@@ -185,6 +205,24 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
     return `${Math.floor(diffInMinutes / 1440)}d`;
   }, []);
 
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: Event) => {
+      const target = event.target as Element;
+      // Don't close if clicking on the dropdown itself or its children
+      if (target && (target.closest('.webhook-selector') || target.closest('[aria-label="More options"]') || target.closest('.chat-menu'))) {
+        return;
+      }
+      setIsWebhookSelectorOpen(false);
+      setOpenChatMenu(null);
+    };
+
+    if (isWebhookSelectorOpen || openChatMenu) {
+      document.addEventListener('click', handleClickOutside, true);
+      return () => document.removeEventListener('click', handleClickOutside, true);
+    }
+  }, [isWebhookSelectorOpen, openChatMenu]);
+
   // Check webhook health only on initial load or when webhook changes
   useEffect(() => {
     // Run health check when activeWebhook changes or on initial load
@@ -200,110 +238,211 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
 
   return (
     <>
+      {/* Mobile Backdrop Overlay */}
+      {isMobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+          onClick={onMobileClose}
+        />
+      )}
+
       <div className={cn(
-        'flex flex-col h-full transition-all duration-300 border-r shadow-lg relative',
+        'flex flex-col h-full transition-all duration-300 shadow-lg relative',
         'bg-slate-800 dark:bg-slate-900 backdrop-blur-xl',
-        'border-slate-700 dark:border-slate-700',
-        isCollapsed ? 'w-16' : 'w-80',
+        // Desktop: Normal sidebar behavior with border-r
+        'md:border-r md:border-slate-700 md:dark:border-slate-700',
+        // Mobile: Full screen when open, hidden when closed
+        isMobileOpen ? 'fixed inset-0 z-50 w-full h-full flex' : 'hidden md:flex',
+        // Desktop width when not mobile
+        !isMobileOpen && (isCollapsed ? 'w-16' : 'w-80'),
         className
       )}>
         {/* Header */}
-        <div className="flex-shrink-0 p-4 border-b border-slate-700 dark:border-slate-700 relative">
+        <div className="flex-shrink-0 p-6 md:p-4 border-b border-slate-700 dark:border-slate-700 relative">
           <div className="flex items-center justify-between">
             {!isCollapsed && (
               <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-3">
                   <Image
                     src="/logo.png"
                     alt="Webn8 Logo"
-                    width={24}
-                    height={24}
-                    className="flex-shrink-0"
-                    style={{ width: 'auto', height: '24px' }}
+                    width={28}
+                    height={28}
+                    className="flex-shrink-0 md:w-6 md:h-6"
+                    style={{ width: 'auto', height: '28px' }}
                   />
-                  <h2 className="text-lg font-semibold truncate" style={{ color: '#f1f5f9' }}>
+                  <h2 className="text-xl md:text-lg font-semibold truncate" style={{ color: '#f1f5f9' }}>
                     WebhookIQ
                   </h2>
                 </div>
-                {activeWebhook && (
-                  <div className="flex items-center mt-2 text-xs" style={{ color: '#94a3b8' }}>
-                    <div className="flex items-center min-w-0">
-                      <Webhook className="w-3 h-3 mr-1 flex-shrink-0" />
-                      <span>{activeWebhook.name}</span>
-                    </div>
+                {/* Webhook Selector in Header */}
+                {webhooks.length > 0 && (
+                  <div className="mt-3 md:mt-2 relative webhook-selector -mx-6 md:-mx-4 px-6 md:px-4" style={{ width: 'calc(100% + 3rem)' }}>
+                    {webhooks.length === 1 ? (
+                      // Single webhook - show as static text with status
+                      <div className="flex items-center justify-between text-sm md:text-xs" style={{ color: '#94a3b8' }}>
+                        <div className="flex items-center min-w-0 flex-1">
+                          <Webhook className="w-4 h-4 md:w-3 md:h-3 mr-2 md:mr-1 flex-shrink-0" />
+                          <span className="truncate">{activeWebhook?.name}</span>
+                        </div>
+                        {/* Connection status pill */}
+                        <div className={cn(
+                          "flex items-center space-x-1 px-3 py-1 md:px-2 md:py-0.5 rounded-full text-sm md:text-xs font-medium transition-all duration-300 ml-3 md:ml-2 flex-shrink-0",
+                          isOnline === true
+                            ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 shadow-emerald-200/50 dark:shadow-emerald-800/50 shadow-sm" 
+                            : isOnline === false
+                            ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 shadow-red-200/50 dark:shadow-red-800/50 shadow-sm"
+                            : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shadow-blue-200/50 dark:shadow-blue-800/50 shadow-sm"
+                        )}>
+                          {isOnline === true ? (
+                            <>
+                              <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse"></div>
+                              <span className="hidden sm:inline">Connected</span>
+                            </>
+                          ) : isOnline === false ? (
+                            <>
+                              <div className="w-1.5 h-1.5 bg-red-500 dark:bg-red-400 rounded-full"></div>
+                              <span className="hidden sm:inline">Offline</span>
+                            </>
+                          ) : (
+                            <>
+                              <div className="w-1.5 h-1.5 bg-blue-500 dark:bg-blue-400 rounded-full animate-spin"></div>
+                              <span className="hidden sm:inline">Checking</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      // Multiple webhooks - show as dropdown selector with status on same row
+                      <div className="space-y-1">
+                        <div className="flex items-center">
+                          <button
+                            onClick={() => setIsWebhookSelectorOpen(!isWebhookSelectorOpen)}
+                            className={cn(
+                              "flex items-center text-left text-xs px-2 py-1 rounded transition-colors mr-2",
+                              "hover:bg-slate-700 dark:hover:bg-slate-700 touch-manipulation",
+                              "focus:outline-none focus:ring-1 focus:ring-blue-500",
+                              isWebhookSelectorOpen && "bg-slate-700 dark:bg-slate-700"
+                            )}
+                            style={{ color: '#94a3b8' }}
+                          >
+                            <Webhook className="w-3 h-3 mr-1 flex-shrink-0" />
+                            <span className="flex-1 truncate">{activeWebhook?.name || 'Select Webhook'}</span>
+                            <svg 
+                              className={cn("w-3 h-3 ml-1 transition-transform flex-shrink-0", isWebhookSelectorOpen && "rotate-180")} 
+                              fill="none" 
+                              stroke="currentColor" 
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+
+                          {/* Connection status pill for multiple webhooks - same row */}
+                          <div className={cn(
+                            "flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all duration-300 flex-shrink-0",
+                            isOnline === true
+                              ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 shadow-emerald-200/50 dark:shadow-emerald-800/50 shadow-sm" 
+                              : isOnline === false
+                              ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 shadow-red-200/50 dark:shadow-red-800/50 shadow-sm"
+                              : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shadow-blue-200/50 dark:shadow-blue-800/50 shadow-sm"
+                          )}>
+                            {isOnline === true ? (
+                              <>
+                                <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse"></div>
+                                <span className="hidden sm:inline">Connected</span>
+                              </>
+                            ) : isOnline === false ? (
+                              <>
+                                <div className="w-1.5 h-1.5 bg-red-500 dark:bg-red-400 rounded-full"></div>
+                                <span className="hidden sm:inline">Offline</span>
+                              </>
+                            ) : (
+                              <>
+                                <div className="w-1.5 h-1.5 bg-blue-500 dark:bg-blue-400 rounded-full animate-spin"></div>
+                                <span className="hidden sm:inline">Checking</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Dropdown Menu */}
+                        {isWebhookSelectorOpen && (
+                          <div className="absolute left-0 right-0 top-full mt-1 bg-slate-800 dark:bg-slate-800 border border-slate-700 dark:border-slate-700 rounded-lg shadow-lg z-[70] max-h-48 overflow-y-auto">
+                            {webhooks.map((webhook) => (
+                              <button
+                                key={webhook.id}
+                                onClick={() => {
+                                  setActiveWebhook(webhook.id);
+                                  setIsWebhookSelectorOpen(false);
+                                }}
+                                className={cn(
+                                  "w-full text-left px-3 py-2 text-xs transition-colors touch-manipulation",
+                                  "hover:bg-slate-700 dark:hover:bg-slate-700",
+                                  "active:bg-slate-600 dark:active:bg-slate-600",
+                                  "first:rounded-t-lg last:rounded-b-lg",
+                                  "flex items-center",
+                                  webhook.id === activeWebhook?.id && "bg-blue-600 text-white"
+                                )}
+                                style={{ 
+                                  color: webhook.id === activeWebhook?.id ? '#ffffff' : '#f1f5f9'
+                                }}
+                              >
+                                <Webhook className="w-3 h-3 mr-2 flex-shrink-0" />
+                                <span className="truncate">{webhook.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             )}
             
-            {/* Connection status pill - positioned relative to full header */}
-            {activeWebhook && !isCollapsed && (
-              <div className={cn(
-                "absolute right-4 bottom-2 flex items-center space-x-1 px-1.5 py-0.5 rounded-full text-xs font-medium transition-all duration-300 flex-shrink-0",
-                      isOnline === true
-                        ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300" 
-                        : isOnline === false
-                        ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300"
-                        : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
-                    )}>
-                      {isOnline === true ? (
-                        <>
-                          <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse"></div>
-                          <span className="hidden lg:inline text-xs">Connected</span>
-                        </>
-                      ) : isOnline === false ? (
-                        <>
-                          <div className="w-1.5 h-1.5 bg-red-500 dark:bg-red-400 rounded-full"></div>
-                          <span className="hidden lg:inline text-xs">Offline</span>
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-1.5 h-1.5 bg-blue-500 dark:bg-blue-400 rounded-full animate-spin"></div>
-                          <span className="hidden lg:inline text-xs">Checking</span>
-                        </>
-                      )}
-                </div>
-              )}
-            
-            <div className="flex items-center space-x-1 -mt-8">
+            <div className="flex items-center space-x-2 md:space-x-1 -mt-8">
               {!isCollapsed && (
                 <>
                   <button
                     onClick={handleNewChat}
                     disabled={!activeWebhook}
                     className={cn(
-                      'p-2 rounded-lg transition-colors',
-                      'hover:bg-slate-100 dark:hover:bg-slate-800',
+                      'p-3 md:p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center',
+                      'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700',
                       'disabled:opacity-50 disabled:cursor-not-allowed'
                     )}
                     title="New Chat"
                   >
-                    <Plus className="w-4 h-4" style={{ color: '#94a3b8' }} />
+                    <Plus className="w-5 h-5 md:w-4 md:h-4" style={{ color: '#94a3b8' }} />
                   </button>
                   <button
                     onClick={handleCleanupEmptyChats}
                     disabled={!activeWebhook}
                     className={cn(
-                      'p-2 rounded-lg transition-colors',
-                      'hover:bg-slate-100 dark:hover:bg-slate-800',
+                      'p-3 md:p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center',
+                      'hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700',
                       'disabled:opacity-50 disabled:cursor-not-allowed'
                     )}
                     title="Cleanup Empty Chats"
                   >
-                    <Eraser className="w-4 h-4" style={{ color: '#94a3b8' }} />
+                    <Eraser className="w-5 h-5 md:w-4 md:h-4" style={{ color: '#94a3b8' }} />
                   </button>
                   <button
                     onClick={onConfigOpen}
-                    className="p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="p-3 md:p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center"
                     title="Settings"
                   >
-                    <Settings className="w-4 h-4" style={{ color: '#94a3b8' }} />
+                    <Settings className="w-5 h-5 md:w-4 md:h-4" style={{ color: '#94a3b8' }} />
                   </button>
                 </>
               )}
+              {/* Hide collapse button on mobile since we have close button */}
               <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                className={cn(
+                  'p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 hidden md:block'
+                )}
                 title={isCollapsed ? 'Expand' : 'Collapse'}
               >
                 {isCollapsed ? (
@@ -319,14 +458,14 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
         {/* Chat List */}
         <div className="flex-1 overflow-y-auto">
           {!activeWebhook && !isCollapsed && (
-            <div className="p-4 text-center">
-              <Globe className="w-8 h-8 mx-auto mb-2 opacity-50" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
-              <p className="text-sm" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>
+            <div className="p-6 md:p-4 text-center">
+              <Globe className="w-12 h-12 md:w-8 md:h-8 mx-auto mb-4 md:mb-2 opacity-50" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
+              <p className="text-base md:text-sm mb-4 md:mb-2" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>
                 No webhook configured
               </p>
               <button
                 onClick={onConfigOpen}
-                className="mt-2 px-3 py-1 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                className="px-6 py-3 md:px-3 md:py-1 text-sm md:text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 active:bg-blue-700 transition-colors min-h-[44px] md:min-h-auto"
               >
                 Setup Webhook
               </button>
@@ -334,14 +473,14 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
           )}
 
           {activeWebhook && chatsForActiveWebhook.length === 0 && !isCollapsed && (
-            <div className="p-4 text-center">
-              <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
-              <p className="text-sm" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>
+            <div className="p-6 md:p-4 text-center">
+              <MessageSquare className="w-12 h-12 md:w-8 md:h-8 mx-auto mb-4 md:mb-2 opacity-50" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
+              <p className="text-base md:text-sm mb-4 md:mb-2" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>
                 No chats yet
               </p>
               <button
                 onClick={handleNewChat}
-                className="mt-2 px-3 py-1 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                className="px-6 py-3 md:px-3 md:py-1 text-sm md:text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 active:bg-blue-700 transition-colors min-h-[44px] md:min-h-auto"
               >
                 Start First Chat
               </button>
@@ -358,7 +497,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
               )}
               onClick={() => handleChatSelect(chat.id)}
             >
-              <div className="p-3">
+              <div className="p-4 md:p-3">
                 {isCollapsed ? (
                   <div className="flex justify-center">
                     <MessageSquare className="w-5 h-5" style={{ 
@@ -404,48 +543,41 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
                     </div>
                     
                     {!editingChat && (
-                      <div className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="relative">
+                      <div className="ml-2 md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity">
+                        <div className="relative chat-menu">
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                            }}
-                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                            onClick={(e) => toggleChatMenu(chat.id, e)}
+                            className="p-2 md:p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-slate-300 dark:active:bg-slate-600 transition-colors min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center"
+                            aria-label="More options"
                           >
-                            <MoreVertical className="w-3 h-3" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
+                            <MoreVertical className="w-4 h-4 md:w-3 md:h-3" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
                           </button>
                           
-                          <div className="absolute right-0 top-6 hidden group-hover:flex flex-col bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-10">
+                          <div className={cn(
+                            "absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-[60] min-w-[120px]",
+                            openChatMenu === chat.id ? "flex flex-col" : "hidden md:group-hover:flex md:flex-col"
+                          )}>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleEditChat(chat.id, chat.name);
+                                closeChatMenu();
                               }}
-                              className="px-3 py-1 text-xs text-left flex items-center transition-colors"
-                              style={{ 
-                                color: theme === 'light' ? '#374151' : '#94a3b8',
-                                backgroundColor: 'transparent'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = theme === 'light' ? '#f1f5f9' : '#374151';
-                                e.currentTarget.style.color = theme === 'light' ? '#111827' : '#ffffff';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                                e.currentTarget.style.color = theme === 'light' ? '#374151' : '#94a3b8';
-                              }}
+                              className="px-4 py-3 md:px-3 md:py-2 text-sm md:text-xs text-left flex items-center transition-colors hover:bg-slate-50 dark:hover:bg-slate-700 active:bg-slate-100 dark:active:bg-slate-600 min-h-[44px] md:min-h-auto"
+                              style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}
                             >
-                              <Edit3 className="w-3 h-3 mr-2" />
+                              <Edit3 className="w-4 h-4 md:w-3 md:h-3 mr-3 md:mr-2 flex-shrink-0" />
                               Rename
                             </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setShowDeleteModal(chat.id);
+                                closeChatMenu();
                               }}
-                              className="px-3 py-1 text-xs text-left hover:bg-red-100 dark:hover:bg-red-900 flex items-center text-red-600 dark:text-red-400"
+                              className="px-4 py-3 md:px-3 md:py-2 text-sm md:text-xs text-left hover:bg-red-50 dark:hover:bg-red-900/50 active:bg-red-100 dark:active:bg-red-900/70 flex items-center text-red-600 dark:text-red-400 transition-colors min-h-[44px] md:min-h-auto"
                             >
-                              <Trash2 className="w-3 h-3 mr-2" />
+                              <Trash2 className="w-4 h-4 md:w-3 md:h-3 mr-3 md:mr-2 flex-shrink-0" />
                               Delete
                             </button>
                           </div>
@@ -459,23 +591,6 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
           ))}
         </div>
 
-        {/* Webhook Switcher */}
-        {!isCollapsed && webhooks.length > 1 && (
-          <div className="flex-shrink-0 p-3 border-t border-slate-700 dark:border-slate-700">
-            <select
-              value={activeWebhook?.id || ''}
-              onChange={(e) => setActiveWebhook(e.target.value)}
-              className="w-full text-xs p-2 rounded-lg border border-slate-700 dark:border-slate-700 bg-slate-800 dark:bg-slate-800"
-              style={{ color: '#f1f5f9' }}
-            >
-              {webhooks.map((webhook) => (
-                <option key={webhook.id} value={webhook.id}>
-                  {webhook.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
 
         {/* User Profile Section */}
         <div className="flex-shrink-0 border-t border-slate-700 dark:border-slate-700">
@@ -508,11 +623,11 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
               </div>
             </div>
           ) : (
-            <div className="p-4">
-              <div className="flex items-center space-x-3">
+            <div className="p-6 md:p-4">
+              <div className="flex items-center space-x-4 md:space-x-3">
                 <div className="relative flex-shrink-0">
                   <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center shadow-lg",
+                    "w-12 h-12 md:w-10 md:h-10 rounded-full flex items-center justify-center shadow-lg",
                     user?.photoURL && !user.isAnonymous 
                       ? "border-2 border-slate-500 hover:border-slate-400 transition-colors"
                       : "bg-gradient-to-br from-emerald-400 to-emerald-600"
@@ -521,12 +636,12 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
                       <img
                         src={user.photoURL}
                         alt={user.displayName || 'User'}
-                        className="w-10 h-10 rounded-full"
+                        className="w-12 h-12 md:w-10 md:h-10 rounded-full"
                       />
                     ) : user?.isAnonymous ? (
-                      <span className="text-white text-sm font-medium">👤</span>
+                      <span className="text-white text-base md:text-sm font-medium">👤</span>
                     ) : (
-                      <User className="w-5 h-5 text-white" />
+                      <User className="w-6 h-6 md:w-5 md:h-5 text-white" />
                     )}
                   </div>
                   
@@ -537,11 +652,11 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate" style={{ color: '#f1f5f9' }}>
+                  <p className="text-base md:text-sm font-medium truncate" style={{ color: '#f1f5f9' }}>
                     {user?.displayName || userProfile?.profile?.name || 'User'}
                   </p>
                   {user?.email && (
-                    <p className="text-xs truncate" style={{ color: '#94a3b8' }}>
+                    <p className="text-sm md:text-xs truncate" style={{ color: '#94a3b8' }}>
                       {user.email}
                     </p>
                   )}
@@ -549,15 +664,36 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
                 
                 <button
                   onClick={handleSignOutClick}
-                  className="p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 flex-shrink-0"
+                  className="p-3 md:p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 flex-shrink-0 min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center"
                   title="Sign Out"
                 >
-                  <LogOut className="w-4 h-4" style={{ color: '#94a3b8' }} />
+                  <LogOut className="w-5 h-5 md:w-4 md:h-4" style={{ color: '#94a3b8' }} />
                 </button>
               </div>
             </div>
           )}
         </div>
+
+        {/* Mobile Close Button - Bottom Position */}
+        {isMobileOpen && (
+          <div className="flex-shrink-0 p-6 border-t border-slate-700 dark:border-slate-700 md:hidden flex justify-center bg-slate-800 dark:bg-slate-900">
+            <button
+              onClick={onMobileClose}
+              className={cn(
+                "px-8 py-4 rounded-full border-2 border-slate-400 dark:border-slate-500 transition-all duration-200",
+                "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600",
+                "hover:border-slate-500 dark:hover:border-slate-400",
+                "active:scale-95 active:bg-slate-300 dark:active:bg-slate-500",
+                "shadow-lg hover:shadow-xl touch-manipulation flex items-center space-x-3"
+              )}
+              title="Close Menu"
+            >
+              <X className="w-6 h-6" style={{ color: '#374151' }} />
+              <span className="text-base font-medium" style={{ color: '#374151' }}>Close</span>
+            </button>
+          </div>
+        )}
+
       </div>
 
       {/* Delete Confirmation Modal */}
@@ -565,35 +701,23 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
         isOpen={!!showDeleteModal}
         onClose={() => setShowDeleteModal(null)}
         title="Delete Chat"
-        className="max-w-md"
+        className="max-w-[95vw] w-full sm:max-w-md"
       >
-        <div className="space-y-4" style={{ backgroundColor: theme === 'light' ? '#ffffff' : '#0f172a', padding: '16px', borderRadius: '8px' }}>
-          <p className="text-sm" style={{ color: theme === 'light' ? '#111827' : '#ffffff' }}>
+        <div className="space-y-4 p-1">
+          <p className="text-sm" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}>
             Are you sure you want to delete this chat? This action cannot be undone and all messages will be lost.
           </p>
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
             <button
               onClick={() => setShowDeleteModal(null)}
-              className="px-4 py-2 text-sm border rounded-lg transition-colors"
-              style={{ 
-                color: theme === 'light' ? '#111827' : '#ffffff',
-                borderColor: theme === 'light' ? '#e2e8f0' : '#374151',
-                backgroundColor: 'transparent'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = theme === 'light' ? '#f1f5f9' : '#374151';
-                e.currentTarget.style.color = theme === 'light' ? '#111827' : '#ffffff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = theme === 'light' ? '#111827' : '#ffffff';
-              }}
+              className="w-full sm:w-auto px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}
             >
               Cancel
             </button>
             <button
               onClick={() => showDeleteModal && handleDeleteChat(showDeleteModal)}
-              className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              className="w-full sm:w-auto px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
             >
               Delete
             </button>
@@ -606,35 +730,23 @@ export function FirebaseChatSidebar({ className, onConfigOpen }: FirebaseChatSid
         isOpen={showSignOutModal}
         onClose={() => setShowSignOutModal(false)}
         title="Sign Out"
-        className="max-w-md"
+        className="max-w-[95vw] w-full sm:max-w-md"
       >
-        <div className="space-y-4" style={{ backgroundColor: theme === 'light' ? '#ffffff' : '#0f172a', padding: '16px', borderRadius: '8px' }}>
-          <p className="text-sm" style={{ color: theme === 'light' ? '#111827' : '#ffffff' }}>
+        <div className="space-y-4 p-1">
+          <p className="text-sm" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}>
             Are you sure you want to sign out? You will need to sign in again to access your chats and data.
           </p>
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
             <button
               onClick={() => setShowSignOutModal(false)}
-              className="px-4 py-2 text-sm border rounded-lg transition-colors"
-              style={{ 
-                color: theme === 'light' ? '#111827' : '#ffffff',
-                borderColor: theme === 'light' ? '#e2e8f0' : '#374151',
-                backgroundColor: 'transparent'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = theme === 'light' ? '#f1f5f9' : '#374151';
-                e.currentTarget.style.color = theme === 'light' ? '#111827' : '#ffffff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = theme === 'light' ? '#111827' : '#ffffff';
-              }}
+              className="w-full sm:w-auto px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}
             >
               Cancel
             </button>
             <button
               onClick={handleConfirmSignOut}
-              className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              className="w-full sm:w-auto px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
             >
               Sign Out
             </button>

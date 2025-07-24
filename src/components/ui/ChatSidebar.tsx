@@ -18,7 +18,8 @@ import {
   Trash2,
   Edit3,
   Webhook,
-  Globe
+  Globe,
+  X
 } from 'lucide-react';
 import { Modal } from './Modal';
 import { webhookClient } from '@/lib/webhook-client';
@@ -26,9 +27,11 @@ import { webhookClient } from '@/lib/webhook-client';
 interface ChatSidebarProps {
   className?: string;
   onConfigOpen?: () => void;
+  isMobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
+export function ChatSidebar({ className, onConfigOpen, isMobileOpen = false, onMobileClose }: ChatSidebarProps) {
   const { theme } = useTheme();
   const { store, createNewChat } = useConfig();
   const firebase = useFirebase();
@@ -38,6 +41,8 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
   const [editName, setEditName] = useState('');
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const isInitialized = useRef(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [isWebhookSelectorOpen, setIsWebhookSelectorOpen] = useState(false);
 
   // Feature flag: Switch between Firebase and Redux
   const USE_FIREBASE = true; // Set to false to use Redux instead
@@ -88,6 +93,24 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
       clearInterval(healthInterval);
     };
   }, [activeWebhook]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: Event) => {
+      const target = event.target as Element;
+      // Don't close if clicking on the dropdown itself or its children
+      if (target && (target.closest('.dropdown-menu') || target.closest('[aria-label="More options"]') || target.closest('.webhook-selector'))) {
+        return;
+      }
+      setOpenDropdown(null);
+      setIsWebhookSelectorOpen(false);
+    };
+
+    if (openDropdown || isWebhookSelectorOpen) {
+      document.addEventListener('click', handleClickOutside, true);
+      return () => document.removeEventListener('click', handleClickOutside, true);
+    }
+  }, [openDropdown, isWebhookSelectorOpen]);
 
   const handleNewChat = async () => {
     if (!activeWebhook) return;
@@ -165,11 +188,24 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
 
   return (
     <>
+      {/* Mobile Backdrop Overlay */}
+      {isMobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+          onClick={onMobileClose}
+        />
+      )}
+
       <div className={cn(
         'flex flex-col h-full transition-all duration-300 border-r shadow-lg relative',
         'bg-slate-800 dark:bg-slate-900 backdrop-blur-xl',
         'border-slate-700 dark:border-slate-700',
-        isCollapsed ? 'w-16' : 'w-80',
+        // Desktop: Normal sidebar behavior OR Mobile when open
+        isMobileOpen ? 'fixed inset-y-0 left-0 z-50 w-80 flex' : 'hidden md:flex',
+        // Desktop width when not mobile
+        !isMobileOpen && (isCollapsed ? 'w-16' : 'w-80'),
+        // Mobile is always full width (w-80)
+        isMobileOpen && 'w-80',
         className
       )}>
         {/* Header */}
@@ -190,42 +226,131 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
                     WebhookIQ
                   </h2>
                 </div>
-                {activeWebhook && (
-                  <div className="flex items-center justify-between mt-1 text-xs" style={{ color: '#94a3b8' }}>
-                    <div className="flex items-center min-w-0 flex-1">
-                      <Webhook className="w-3 h-3 mr-1 flex-shrink-0" />
-                      <span className="truncate">{activeWebhook.name}</span>
-                    </div>
-                    {/* Connection status pill - DEBUG: isOnline={String(isOnline)} */}
-                    <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all duration-300 ml-2 flex-shrink-0 bg-blue-500 text-white">
-                      <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                      <span>DEBUG:{String(isOnline)}</span>
-                    </div>
-                    <div className={cn(
-                      "flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all duration-300 ml-2 flex-shrink-0",
-                      isOnline === true
-                        ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 shadow-emerald-200/50 dark:shadow-emerald-800/50 shadow-sm" 
-                        : isOnline === false
-                        ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 shadow-red-200/50 dark:shadow-red-800/50 shadow-sm"
-                        : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shadow-blue-200/50 dark:shadow-blue-800/50 shadow-sm"
-                    )}>
-                      {isOnline === true ? (
-                        <>
-                          <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse"></div>
-                          <span className="hidden sm:inline">Connected</span>
-                        </>
-                      ) : isOnline === false ? (
-                        <>
-                          <div className="w-1.5 h-1.5 bg-red-500 dark:bg-red-400 rounded-full"></div>
-                          <span className="hidden sm:inline">Offline</span>
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-1.5 h-1.5 bg-blue-500 dark:bg-blue-400 rounded-full animate-spin"></div>
-                          <span className="hidden sm:inline">Checking</span>
-                        </>
-                      )}
-                    </div>
+                {/* Webhook Selector in Header */}
+                {(USE_FIREBASE ? firebase.webhooks : store.webhooks).length > 0 && (
+                  <div className="mt-2 relative webhook-selector">
+                    {(USE_FIREBASE ? firebase.webhooks : store.webhooks).length === 1 ? (
+                      // Single webhook - show as static text with status
+                      <div className="flex items-center justify-between text-xs" style={{ color: '#94a3b8' }}>
+                        <div className="flex items-center min-w-0 flex-1">
+                          <Webhook className="w-3 h-3 mr-1 flex-shrink-0" />
+                          <span className="truncate">{activeWebhook?.name}</span>
+                        </div>
+                        {/* Connection status pill */}
+                        <div className={cn(
+                          "flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all duration-300 ml-2 flex-shrink-0",
+                          isOnline === true
+                            ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 shadow-emerald-200/50 dark:shadow-emerald-800/50 shadow-sm" 
+                            : isOnline === false
+                            ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 shadow-red-200/50 dark:shadow-red-800/50 shadow-sm"
+                            : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shadow-blue-200/50 dark:shadow-blue-800/50 shadow-sm"
+                        )}>
+                          {isOnline === true ? (
+                            <>
+                              <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse"></div>
+                              <span className="hidden sm:inline">Connected</span>
+                            </>
+                          ) : isOnline === false ? (
+                            <>
+                              <div className="w-1.5 h-1.5 bg-red-500 dark:bg-red-400 rounded-full"></div>
+                              <span className="hidden sm:inline">Offline</span>
+                            </>
+                          ) : (
+                            <>
+                              <div className="w-1.5 h-1.5 bg-blue-500 dark:bg-blue-400 rounded-full animate-spin"></div>
+                              <span className="hidden sm:inline">Checking</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      // Multiple webhooks - show as dropdown selector with status  
+                      <div className="space-y-1">
+                        <button
+                          onClick={() => setIsWebhookSelectorOpen(!isWebhookSelectorOpen)}
+                          className={cn(
+                            "flex items-center w-full text-left text-xs px-2 py-1 rounded transition-colors",
+                            "hover:bg-slate-700 dark:hover:bg-slate-700 touch-manipulation",
+                            "focus:outline-none focus:ring-1 focus:ring-blue-500",
+                            isWebhookSelectorOpen && "bg-slate-700 dark:bg-slate-700"
+                          )}
+                          style={{ color: '#94a3b8' }}
+                        >
+                          <Webhook className="w-3 h-3 mr-1 flex-shrink-0" />
+                          <span className="flex-1 truncate">{activeWebhook?.name || 'Select Webhook'}</span>
+                          <svg 
+                            className={cn("w-3 h-3 ml-1 transition-transform flex-shrink-0", isWebhookSelectorOpen && "rotate-180")} 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+
+                        {/* Connection status pill for multiple webhooks */}
+                        <div className="flex justify-end">
+                          <div className={cn(
+                            "flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all duration-300 flex-shrink-0",
+                            isOnline === true
+                              ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 shadow-emerald-200/50 dark:shadow-emerald-800/50 shadow-sm" 
+                              : isOnline === false
+                              ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 shadow-red-200/50 dark:shadow-red-800/50 shadow-sm"
+                              : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shadow-blue-200/50 dark:shadow-blue-800/50 shadow-sm"
+                          )}>
+                            {isOnline === true ? (
+                              <>
+                                <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse"></div>
+                                <span className="hidden sm:inline">Connected</span>
+                              </>
+                            ) : isOnline === false ? (
+                              <>
+                                <div className="w-1.5 h-1.5 bg-red-500 dark:bg-red-400 rounded-full"></div>
+                                <span className="hidden sm:inline">Offline</span>
+                              </>
+                            ) : (
+                              <>
+                                <div className="w-1.5 h-1.5 bg-blue-500 dark:bg-blue-400 rounded-full animate-spin"></div>
+                                <span className="hidden sm:inline">Checking</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Dropdown Menu */}
+                        {isWebhookSelectorOpen && (
+                          <div className="absolute left-0 right-0 top-full mt-1 bg-slate-800 dark:bg-slate-800 border border-slate-700 dark:border-slate-700 rounded-lg shadow-lg z-[70] max-h-48 overflow-y-auto">
+                            {(USE_FIREBASE ? firebase.webhooks : store.webhooks).map((webhook) => (
+                              <button
+                                key={webhook.id}
+                                onClick={() => {
+                                  if (USE_FIREBASE) {
+                                    firebase.setActiveWebhook(webhook.id);
+                                  } else {
+                                    store.setActiveWebhook(webhook.id);
+                                  }
+                                  setIsWebhookSelectorOpen(false);
+                                }}
+                                className={cn(
+                                  "w-full text-left px-3 py-2 text-xs transition-colors touch-manipulation",
+                                  "hover:bg-slate-700 dark:hover:bg-slate-700",
+                                  "active:bg-slate-600 dark:active:bg-slate-600",
+                                  "first:rounded-t-lg last:rounded-b-lg",
+                                  "flex items-center",
+                                  webhook.id === activeWebhook?.id && "bg-blue-600 text-white"
+                                )}
+                                style={{ 
+                                  color: webhook.id === activeWebhook?.id ? '#ffffff' : '#f1f5f9'
+                                }}
+                              >
+                                <Webhook className="w-3 h-3 mr-2 flex-shrink-0" />
+                                <span className="truncate">{webhook.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -238,9 +363,10 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
                     onClick={handleNewChat}
                     disabled={!activeWebhook}
                     className={cn(
-                      'p-2 rounded-lg transition-colors',
+                      'p-2 rounded-lg transition-colors touch-manipulation',
                       'hover:bg-slate-100 dark:hover:bg-slate-800',
-                      'disabled:opacity-50 disabled:cursor-not-allowed'
+                      'disabled:opacity-50 disabled:cursor-not-allowed',
+                      'active:scale-95 active:bg-slate-200 dark:active:bg-slate-700'
                     )}
                     title="New Chat"
                   >
@@ -248,16 +374,25 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
                   </button>
                   <button
                     onClick={onConfigOpen}
-                    className="p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className={cn(
+                      'p-2 rounded-lg transition-colors touch-manipulation',
+                      'hover:bg-slate-100 dark:hover:bg-slate-800',
+                      'active:scale-95 active:bg-slate-200 dark:active:bg-slate-700'
+                    )}
                     title="Settings"
                   >
                     <Settings className="w-4 h-4" style={{ color: '#94a3b8' }} />
                   </button>
                 </>
               )}
+              {/* Hide collapse button on mobile since we have close button */}
               <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                className={cn(
+                  'p-2 rounded-lg transition-colors touch-manipulation hidden md:block',
+                  'hover:bg-slate-100 dark:hover:bg-slate-800',
+                  'active:scale-95 active:bg-slate-200 dark:active:bg-slate-700'
+                )}
                 title={isCollapsed ? 'Expand' : 'Collapse'}
               >
                 {isCollapsed ? (
@@ -280,7 +415,10 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
               </p>
               <button
                 onClick={onConfigOpen}
-                className="mt-2 px-3 py-1 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                className={cn(
+                  "mt-2 px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors touch-manipulation",
+                  "active:scale-95 active:bg-blue-700"
+                )}
               >
                 Setup Webhook
               </button>
@@ -295,7 +433,10 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
               </p>
               <button
                 onClick={handleNewChat}
-                className="mt-2 px-3 py-1 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                className={cn(
+                  "mt-2 px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors touch-manipulation",
+                  "active:scale-95 active:bg-blue-700"
+                )}
               >
                 Start First Chat
               </button>
@@ -307,10 +448,18 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
               key={chat.id}
               className={cn(
                 'relative group cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-b-0',
-                'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors',
+                'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors touch-manipulation',
+                'active:bg-slate-100 dark:active:bg-slate-700/50',
+                'md:hover:bg-slate-50 md:dark:hover:bg-slate-800/50',
                 chat.id === activeChat?.id && 'bg-blue-50 dark:bg-blue-900/20 border-r-2 border-r-blue-500'
               )}
-              onClick={() => handleChatSelect(chat.id)}
+              onClick={() => {
+                handleChatSelect(chat.id);
+                // Close mobile sidebar after selection
+                if (isMobileOpen && onMobileClose) {
+                  onMobileClose();
+                }
+              }}
             >
               <div className="p-3">
                 {isCollapsed ? (
@@ -358,50 +507,70 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
                     </div>
                     
                     {!editingChat && (
-                      <div className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="ml-2 md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-opacity">
                         <div className="relative">
                           <button
                             onClick={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
-                              // Toggle dropdown menu
+                              console.log('Three-dot menu clicked for chat:', chat.id);
+                              setOpenDropdown(openDropdown === chat.id ? null : chat.id);
                             }}
-                            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                            className={cn(
+                              'p-3 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors',
+                              'active:scale-95 active:bg-slate-300 dark:active:bg-slate-600',
+                              'touch-manipulation select-none',
+                              'focus:outline-none focus:ring-2 focus:ring-blue-500',
+                              openDropdown === chat.id && 'bg-slate-200 dark:bg-slate-700'
+                            )}
+                            type="button"
+                            aria-label="More options"
                           >
-                            <MoreVertical className="w-3 h-3" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
+                            <MoreVertical className="w-4 h-4" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
                           </button>
                           
-                          {/* Dropdown menu - simplified for now */}
-                          <div className="absolute right-0 top-6 hidden group-hover:flex flex-col bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-10">
+                          {/* Unified dropdown - works on both mobile and desktop */}
+                          <div className={cn(
+                            "dropdown-menu absolute right-0 top-8 flex-col bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 z-10 min-w-[120px]",
+                            // Mobile: Show/hide based on openDropdown state
+                            isMobileOpen ? (
+                              openDropdown === chat.id ? "flex" : "hidden"
+                            ) : (
+                              // Desktop: Show on group hover, but also allow click-based opening
+                              openDropdown === chat.id ? "flex" : "hidden md:group-hover:flex"
+                            )
+                          )}>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleEditChat(chat.id, chat.name);
+                                setOpenDropdown(null);
                               }}
-                              className="px-3 py-1 text-xs text-left flex items-center transition-colors"
+                              className={cn(
+                                "px-3 py-2 text-sm text-left flex items-center transition-colors touch-manipulation",
+                                "hover:bg-slate-100 dark:hover:bg-slate-700",
+                                "active:bg-slate-200 dark:active:bg-slate-600"
+                              )}
                               style={{ 
-                                color: theme === 'light' ? '#374151' : '#94a3b8',
-                                backgroundColor: 'transparent'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = theme === 'light' ? '#f1f5f9' : '#374151';
-                                e.currentTarget.style.color = theme === 'light' ? '#111827' : '#ffffff';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                                e.currentTarget.style.color = theme === 'light' ? '#374151' : '#94a3b8';
+                                color: theme === 'light' ? '#374151' : '#94a3b8'
                               }}
                             >
-                              <Edit3 className="w-3 h-3 mr-2" />
+                              <Edit3 className="w-4 h-4 mr-2" />
                               Rename
                             </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setShowDeleteModal(chat.id);
+                                setOpenDropdown(null);
                               }}
-                              className="px-3 py-1 text-xs text-left hover:bg-red-100 dark:hover:bg-red-900 flex items-center text-red-600 dark:text-red-400"
+                              className={cn(
+                                "px-3 py-2 text-sm text-left flex items-center text-red-600 dark:text-red-400 transition-colors touch-manipulation",
+                                "hover:bg-red-100 dark:hover:bg-red-900",
+                                "active:bg-red-200 dark:active:bg-red-800"
+                              )}
                             >
-                              <Trash2 className="w-3 h-3 mr-2" />
+                              <Trash2 className="w-4 h-4 mr-2" />
                               Delete
                             </button>
                           </div>
@@ -415,29 +584,25 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
           ))}
         </div>
 
-        {/* Webhook Switcher */}
-        {!isCollapsed && (USE_FIREBASE ? firebase.webhooks : store.webhooks).length > 1 && (
-          <div className="flex-shrink-0 p-3 border-t border-slate-700 dark:border-slate-700">
-            <select
-              value={activeWebhook?.id || ''}
-              onChange={(e) => {
-                if (USE_FIREBASE) {
-                  firebase.setActiveWebhook(e.target.value);
-                } else {
-                  store.setActiveWebhook(e.target.value);
-                }
-              }}
-              className="w-full text-xs p-2 rounded-lg border border-slate-700 dark:border-slate-700 bg-slate-800 dark:bg-slate-800"
-              style={{ color: '#f1f5f9' }}
+        {/* Mobile Close Button - Bottom Position */}
+        {isMobileOpen && (
+          <div className="flex-shrink-0 p-3 border-t border-slate-700 dark:border-slate-700 md:hidden flex justify-center">
+            <button
+              onClick={onMobileClose}
+              className={cn(
+                "p-3 rounded-full border-2 border-slate-400 dark:border-slate-500 transition-all duration-200",
+                "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600",
+                "hover:border-slate-500 dark:hover:border-slate-400",
+                "active:scale-95 active:bg-slate-300 dark:active:bg-slate-500",
+                "shadow-sm hover:shadow-md touch-manipulation"
+              )}
+              title="Close Menu"
             >
-              {(USE_FIREBASE ? firebase.webhooks : store.webhooks).map((webhook) => (
-                <option key={webhook.id} value={webhook.id}>
-                  {webhook.name}
-                </option>
-              ))}
-            </select>
+              <X className="w-5 h-5" style={{ color: '#374151' }} />
+            </button>
           </div>
         )}
+
       </div>
 
       {/* Delete Confirmation Modal */}
@@ -445,35 +610,33 @@ export function ChatSidebar({ className, onConfigOpen }: ChatSidebarProps) {
         isOpen={!!showDeleteModal}
         onClose={() => setShowDeleteModal(null)}
         title="Delete Chat"
-        className="max-w-md"
+        className="max-w-[95vw] w-full sm:max-w-md"
       >
-        <div className="space-y-4" style={{ backgroundColor: theme === 'light' ? '#ffffff' : '#0f172a', padding: '16px', borderRadius: '8px' }}>
+        <div className="space-y-4 p-1">
           <p className="text-sm" style={{ color: theme === 'light' ? '#111827' : '#ffffff' }}>
             Are you sure you want to delete this chat? This action cannot be undone and all messages will be lost.
           </p>
-          <div className="flex justify-end space-x-3">
+          <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
             <button
               onClick={() => setShowDeleteModal(null)}
-              className="px-4 py-2 text-sm border rounded-lg transition-colors"
+              className={cn(
+                "w-full sm:w-auto px-4 py-2 text-sm border rounded-lg transition-colors touch-manipulation",
+                "hover:bg-slate-50 dark:hover:bg-slate-800",
+                "active:scale-95 active:bg-slate-100 dark:active:bg-slate-700"
+              )}
               style={{ 
                 color: theme === 'light' ? '#111827' : '#ffffff',
-                borderColor: theme === 'light' ? '#e2e8f0' : '#374151',
-                backgroundColor: 'transparent'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = theme === 'light' ? '#f1f5f9' : '#374151';
-                e.currentTarget.style.color = theme === 'light' ? '#111827' : '#ffffff';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = theme === 'light' ? '#111827' : '#ffffff';
+                borderColor: theme === 'light' ? '#e2e8f0' : '#374151'
               }}
             >
               Cancel
             </button>
             <button
               onClick={() => showDeleteModal && handleDeleteChat(showDeleteModal)}
-              className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              className={cn(
+                "w-full sm:w-auto px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors touch-manipulation",
+                "active:scale-95 active:bg-red-700"
+              )}
             >
               Delete
             </button>
