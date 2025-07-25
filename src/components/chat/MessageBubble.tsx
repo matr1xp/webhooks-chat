@@ -27,9 +27,22 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
     let processedContent = content;
 
     // Replace common LaTeX expressions with wrapped versions
-    const replacements = [
+    const replacements: Array<{ pattern: RegExp; replacement: string | ((match: string, ...args: any[]) => string) }> = [
       // Fractions
       { pattern: /\\frac\{([^}]*)\}\{([^}]*)\}/g, replacement: '$\\frac{$1}{$2}$' },
+      
+      // Boxed expressions and text formatting (handle nested commands first)
+      // First, handle \boxed{content with \text{} inside} by processing the inner \text{} commands
+      { 
+        pattern: /\\boxed\{([^}]*(?:\{[^}]*\}[^}]*)*)\}/g, 
+        replacement: (match, content) => {
+          // Process any \text{} commands inside the boxed content, trimming each replacement
+          const processedContent = content.replace(/\\text\{([^}]*)\}/g, (_match: string, textContent: string) => textContent.trim());
+          return `**${processedContent}**`;
+        }
+      },
+      // Handle standalone \text{} commands (that weren't inside \boxed{})
+      { pattern: /\\text\{([^}]*)\}/g, replacement: '$1' },
       
       // Common symbols
       { pattern: /\\times/g, replacement: '$\\times$' },
@@ -69,7 +82,11 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
 
     // Apply all replacements
     replacements.forEach(({ pattern, replacement }) => {
-      processedContent = processedContent.replace(pattern, replacement);
+      if (typeof replacement === 'function') {
+        processedContent = processedContent.replace(pattern, replacement);
+      } else {
+        processedContent = processedContent.replace(pattern, replacement);
+      }
     });
 
     // Clean up any double dollar signs

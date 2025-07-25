@@ -28,6 +28,7 @@ const nextConfig = {
   // experimental: {
   //   optimizeCss: true,
   // },
+  allowedDevOrigins: ['http://192.168.0.220:3000'],
 }
 
 module.exports = withBundleAnalyzer(nextConfig)

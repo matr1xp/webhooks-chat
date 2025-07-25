@@ -180,9 +180,20 @@ export const webhookSend = onRequest({
       
       const extractStringValue = (obj: any): string | null => {
         const isHtmlContent = (str: string): boolean => {
-          // Check for common HTML tags that indicate HTML content
-          const htmlTagRegex = /<(iframe|html|head|body|div|p|span|script|style)[^>]*>/i;
-          return htmlTagRegex.test(str.trim());
+          // More robust HTML detection to avoid false positives on JSON strings
+          const trimmed = str.trim();
+          
+          // First check if it's likely JSON (starts with { or [)
+          if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+            return false;
+          }
+          
+          // Check for actual HTML structure patterns, not just tag names
+          const htmlStructureRegex = /<(html|head|body|!DOCTYPE)[^>]*>/i;
+          const htmlTagRegex = /<([a-zA-Z][a-zA-Z0-9]*)\s*[^>]*>(.*?)<\/\1>/s;
+          
+          // Look for actual HTML structure or properly formed tags
+          return htmlStructureRegex.test(trimmed) || htmlTagRegex.test(trimmed);
         };
 
         const sanitizeString = (str: string): string => {
@@ -201,6 +212,30 @@ export const webhookSend = onRequest({
           const trimmedStr = obj.trim();
           if (trimmedStr.length === 0) {
             return null;
+          }
+          
+          // Try to parse as JSON first - if successful, extract the content
+          if (trimmedStr.startsWith('{') || trimmedStr.startsWith('[')) {
+            try {
+              const parsed = JSON.parse(trimmedStr);
+              // If it's a JSON object with a message/content field, extract it
+              if (typeof parsed === 'object' && parsed !== null) {
+                const possibleKeys = ['message', 'content', 'text', 'response', 'data', 'result'];
+                for (const key of possibleKeys) {
+                  if (parsed[key] && typeof parsed[key] === 'string') {
+                    console.log(`Extracted content from JSON field "${key}"`);
+                    return parsed[key].trim();
+                  }
+                }
+              }
+              // If JSON array, try first element
+              if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+                console.log('Extracted content from JSON array');
+                return parsed[0].trim();
+              }
+            } catch (e) {
+              // Not valid JSON, continue with regular processing
+            }
           }
           
           // If it's HTML content, try to extract text content
