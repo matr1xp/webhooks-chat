@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useFirebase } from '@/contexts/FirebaseContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
-import { Chrome, Loader2, ShieldCheck } from 'lucide-react';
+import { LogIn, Loader2, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
 
 interface GoogleSignInProps {
@@ -67,9 +67,7 @@ export function GoogleSignIn({ className }: GoogleSignInProps) {
               </div>
             </div>
             
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ 
-              color: theme === 'light' ? '#0f172a' : '#f1f5f9' 
-            }}>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-[#475569] dark:text-[#e2e8f0]">
               Welcome to WebhookIQ
             </h1>
             
@@ -112,9 +110,6 @@ export function GoogleSignIn({ className }: GoogleSignInProps) {
               'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-slate-800',
               'shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]'
             )}
-            style={{ 
-              color: theme === 'light' ? '#1f2937' : '#e2e8f0' 
-            }}
           >
             {authLoading || isSigningIn ? (
               <>
@@ -123,8 +118,10 @@ export function GoogleSignIn({ className }: GoogleSignInProps) {
               </>
             ) : (
               <>
-                <Chrome className="w-5 h-5 text-[#4285f4]" />
-                <span>Continue with Google</span>
+                <LogIn className="w-5 h-5 text-[#153853] dark:text-[#e2e8f0]" />
+                <span className="text-[#153853] dark:text-[#e2e8f0]">
+                  Continue with Google
+                </span>
               </>
             )}
           </button>

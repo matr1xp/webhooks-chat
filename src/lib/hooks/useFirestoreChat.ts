@@ -275,17 +275,20 @@ export const useFirestoreChat = (
 
   // Subscribe to messages for active chat
   useEffect(() => {
-    if (!activeChat) {
+    if (!activeChat?.id) {
       setMessages([]);
       return;
     }
 
     setMessagesLoading(true);
+    
+    // Capture the chatId to prevent closure issues
+    const chatId = activeChat.id;
 
-    const unsubscribe = subscribeToChatMessages(activeChat.id, (firestoreMessages) => {
+    const unsubscribe = subscribeToChatMessages(chatId, (firestoreMessages) => {
       const convertedMessages = firestoreMessages.map(msg => {
         const message = convertFirestoreMessageToMessage(msg);
-        message.sessionId = activeChat.id;
+        message.sessionId = chatId;
         return message;
       });
       
@@ -294,7 +297,7 @@ export const useFirestoreChat = (
     });
 
     return () => unsubscribe();
-  }, [activeChat]);
+  }, [activeChat?.id]);
 
   return {
     // Chat management
