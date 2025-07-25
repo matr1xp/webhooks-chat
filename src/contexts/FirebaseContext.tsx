@@ -16,6 +16,7 @@ interface FirebaseContextType {
   authLoading: boolean;
   authError: string | null;
   signInWithGoogle: () => Promise<void>;
+  signInWithApple: () => Promise<void>;
   signInAnonymous: () => Promise<void>;
   signOut: () => Promise<void>;
   isSignedIn: boolean;
@@ -64,6 +65,7 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
     loading: authLoading,
     error: authError,
     signInWithGoogle,
+    signInWithApple,
     signInAnonymous,
     signOut,
     isSignedIn,
@@ -133,6 +135,7 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
     authLoading,
     authError,
     signInWithGoogle,
+    signInWithApple,
     signInAnonymous,
     signOut,
     isSignedIn,

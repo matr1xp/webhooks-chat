@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { 
   User as FirebaseUser,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInAnonymously,
   GoogleAuthProvider,
+  OAuthProvider,
   onAuthStateChanged,
   signOut as firebaseSignOut
 } from 'firebase/auth';
@@ -17,6 +20,7 @@ interface UseFirestoreAuthReturn {
   loading: boolean;
   error: string | null;
   signInWithGoogle: () => Promise<void>;
+  signInWithApple: () => Promise<void>;
   signInAnonymous: () => Promise<void>;
   signOut: () => Promise<void>;
   isSignedIn: boolean;
@@ -36,6 +40,13 @@ export const useFirestoreAuth = (): UseFirestoreAuthReturn => {
   googleProvider.setCustomParameters({
     prompt: 'select_account'
   });
+
+  // Initialize Apple Auth Provider
+  const appleProvider = new OAuthProvider('apple.com');
+  
+  // Configure Apple Auth Provider
+  appleProvider.addScope('email');
+  appleProvider.addScope('name');
 
   // Sign in with Google (with fallback to anonymous)
   const signInWithGoogle = async () => {
@@ -67,6 +78,56 @@ export const useFirestoreAuth = (): UseFirestoreAuthReturn => {
         }
       } else {
         setError(err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Sign in with Apple
+  const signInWithApple = async () => {
+    try {
+      setError(null);
+      setLoading(true);
+      
+      // Check if we're on mobile - use redirect instead of popup for better compatibility
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      let result;
+      if (isMobile) {
+        // For mobile, use redirect flow which is more reliable
+        await signInWithRedirect(auth, appleProvider);
+        // Note: The redirect result will be handled in the auth state listener
+        return;
+      } else {
+        // For desktop, use popup
+        result = await signInWithPopup(auth, appleProvider);
+      }
+      
+      if (result) {
+        // Extract user info from Apple profile
+        // Apple might not provide displayName, so we'll use email or generate a name
+        const userInfo = {
+          name: result.user.displayName || 
+                result.user.email?.split('@')[0] ||
+                `User ${result.user.uid.slice(-6)}`,
+          email: result.user.email || undefined,
+        };
+        
+        // Create or update user profile
+        await createUserProfile(result.user.uid, userInfo);
+      }
+      
+    } catch (err: any) {
+      // If Apple Sign-In fails, provide helpful error message
+      if (err.code === 'auth/operation-not-allowed') {
+        setError('Apple Sign-In not configured. Contact support or try anonymous sign-in.');
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in was cancelled. Please try again.');
+      } else if (err.code === 'auth/popup-blocked') {
+        setError('Popup blocked. Please allow popups for this site and try again.');
+      } else {
+        setError(err.message || 'Apple Sign-In failed. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -114,6 +175,38 @@ export const useFirestoreAuth = (): UseFirestoreAuthReturn => {
 
   // Auth state listener
   useEffect(() => {
+    // Handle redirect results for Apple Sign-In (mobile compatibility)
+    const handleRedirectResult = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          // This was a redirect-based sign-in (e.g., Apple Sign-In on mobile)
+          const credential = OAuthProvider.credentialFromResult(result);
+          if (credential) {
+            // Extract user info from the result
+            const userInfo = {
+              name: result.user.displayName || 
+                    result.user.email?.split('@')[0] ||
+                    `User ${result.user.uid.slice(-6)}`,
+              email: result.user.email || undefined,
+            };
+            
+            // Create or update user profile
+            await createUserProfile(result.user.uid, userInfo);
+          }
+        }
+      } catch (error: any) {
+        if (error.code === 'auth/operation-not-allowed') {
+          setError('Apple Sign-In not configured. Contact support or try anonymous sign-in.');
+        } else {
+          setError(error.message || 'Authentication failed after redirect.');
+        }
+      }
+    };
+
+    // Handle redirect results on component mount
+    handleRedirectResult();
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         const currentUserId = user?.uid;
@@ -162,6 +255,7 @@ export const useFirestoreAuth = (): UseFirestoreAuthReturn => {
     loading,
     error,
     signInWithGoogle,
+    signInWithApple,
     signInAnonymous,
     signOut,
     isSignedIn: !!user && !user.isAnonymous,

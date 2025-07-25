@@ -7,12 +7,12 @@ import { cn } from '@/lib/utils';
 import { LogIn, Loader2, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
 
-interface GoogleSignInProps {
+interface AuthPageProps {
   className?: string;
 }
 
-export function GoogleSignIn({ className }: GoogleSignInProps) {
-  const { signInWithGoogle, signInAnonymous, authLoading, authError } = useFirebase();
+export function AuthPage({ className }: AuthPageProps) {
+  const { signInWithGoogle, signInWithApple, signInAnonymous, authLoading, authError } = useFirebase();
   const { theme } = useTheme();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
@@ -21,6 +21,17 @@ export function GoogleSignIn({ className }: GoogleSignInProps) {
     setIsSigningIn(true);
     try {
       await signInWithGoogle();
+    } catch (error) {
+      setShowFallback(true);
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    setIsSigningIn(true);
+    try {
+      await signInWithApple();
     } catch (error) {
       setShowFallback(true);
     } finally {
@@ -98,33 +109,67 @@ export function GoogleSignIn({ className }: GoogleSignInProps) {
             </div>
           )}
 
-          {/* Google Sign In Button */}
-          <button
-            onClick={handleSignIn}
-            disabled={authLoading || isSigningIn}
-            className={cn(
-              'w-full flex items-center justify-center space-x-3 px-6 py-4 rounded-xl font-medium text-base transition-all duration-300',
-              'bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600',
-              'hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-gray-400 dark:hover:border-slate-500',
-              'focus:outline-none focus:ring-4 focus:ring-blue-500/25',
-              'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-slate-800',
-              'shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]'
-            )}
-          >
-            {authLoading || isSigningIn ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Signing in...</span>
-              </>
-            ) : (
-              <>
-                <LogIn className="w-5 h-5 text-[#153853] dark:text-[#e2e8f0]" />
-                <span className="text-[#153853] dark:text-[#e2e8f0]">
-                  Continue with Google
-                </span>
-              </>
-            )}
-          </button>
+          {/* Sign In Buttons */}
+          <div className="space-y-3">
+            {/* Google Sign In Button */}
+            <button
+              onClick={handleSignIn}
+              disabled={authLoading || isSigningIn}
+              className={cn(
+                'w-full flex items-center justify-center space-x-3 px-6 py-4 rounded-xl font-medium text-base transition-all duration-300',
+                'bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600',
+                'hover:bg-gray-50 dark:hover:bg-slate-700 hover:border-gray-400 dark:hover:border-slate-500',
+                'focus:outline-none focus:ring-4 focus:ring-blue-500/25',
+                'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-slate-800',
+                'shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]'
+              )}
+            >
+              {authLoading || isSigningIn ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Signing in...</span>
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-5 h-5 text-[#153853] dark:text-[#e2e8f0]" />
+                  <span className="text-[#153853] dark:text-[#e2e8f0]">
+                    Continue with Google
+                  </span>
+                </>
+              )}
+            </button>
+
+            {/* Apple Sign In Button */}
+            <button
+              onClick={handleAppleSignIn}
+              disabled={authLoading || isSigningIn}
+              className={cn(
+                'w-full flex items-center justify-center space-x-3 px-6 py-4 rounded-xl font-medium text-base transition-all duration-300',
+                'bg-black dark:bg-white border border-black dark:border-white',
+                'hover:bg-gray-900 dark:hover:bg-gray-100 hover:border-gray-900 dark:hover:border-gray-100',
+                'focus:outline-none focus:ring-4 focus:ring-gray-500/25',
+                'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-black dark:disabled:hover:bg-white',
+                'shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]'
+              )}
+            >
+              {authLoading || isSigningIn ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin text-white dark:text-black" />
+                  <span className="text-white dark:text-black">Signing in...</span>
+                </>
+              ) : (
+                <>
+                  {/* Apple logo SVG */}
+                  <svg className="w-5 h-5 text-white dark:text-black" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                  </svg>
+                  <span className="text-white dark:text-black">
+                    Continue with Apple
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
 
           {/* Anonymous Fallback Button */}
           {(authError?.includes('not configured') || showFallback) && (

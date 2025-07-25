@@ -5,7 +5,7 @@ import { ChatContainer } from '@/components/chat/ChatContainer';
 import { ChatSidebar } from '@/components/ui/ChatSidebar';
 import { FirebaseChatSidebar } from '@/components/ui/FirebaseChatSidebar';
 import { ConfigModal } from '@/components/ui/ConfigModal';
-import { GoogleSignIn } from '@/components/auth/GoogleSignIn';
+import { AuthPage } from '@/components/auth/AuthPage';
 import { useFirebase } from '@/contexts/FirebaseContext';
 import { FirebaseTest } from '@/components/debug/FirebaseTest';
 import { FirebaseDebug } from '@/components/debug/FirebaseDebug';
@@ -41,7 +41,7 @@ export default function Home() {
 
   // Show sign-in page if using Firebase and not authenticated
   if (USE_FIREBASE && !isSignedIn) {
-    return <GoogleSignIn />;
+    return <AuthPage />;
   }
 
   return (
