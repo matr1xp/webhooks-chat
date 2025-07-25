@@ -44,6 +44,7 @@ export const createUserProfile = async (userId: string, userData: Partial<Firest
     },
     webhooks: {
       webhooks: [],
+      activeChatIds: {},
     },
   };
   
@@ -110,6 +111,11 @@ export const updateUserWebhooks = async (
   // Only add activeWebhookId if it's defined and not null
   if (webhooks.activeWebhookId !== undefined && webhooks.activeWebhookId !== null) {
     cleanWebhooks.activeWebhookId = webhooks.activeWebhookId;
+  }
+  
+  // Handle activeChatIds field
+  if (webhooks.activeChatIds !== undefined) {
+    cleanWebhooks.activeChatIds = webhooks.activeChatIds;
   }
   
   try {

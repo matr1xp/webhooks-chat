@@ -21,6 +21,10 @@ interface UseFirestoreConfigReturn {
   updateWebhook: (webhookId: string, updates: Partial<Omit<FirestoreWebhook, 'id' | 'createdAt'>>) => Promise<void>;
   deleteWebhook: (webhookId: string) => Promise<void>;
   
+  // Active chat persistence
+  getActiveChatId: (webhookId: string) => string | null;
+  setActiveChatId: (webhookId: string, chatId: string | null) => Promise<void>;
+  
   // State
   loading: boolean;
   error: string | null;
@@ -107,7 +111,8 @@ export const useFirestoreConfig = (userId: string | null): UseFirestoreConfigRet
   ): Promise<FirestoreWebhook> => {
     if (!userId) throw new Error('User ID required');
     
-    const callId = Math.random().toString(36).substr(2, 9);
+    // Generate unique ID for logging purposes
+    const callId = Math.random().toString(36).substring(2, 9);
     
     // Wait for user profile to be loaded if it's not available yet
     let currentProfile = userProfile;
@@ -211,8 +216,15 @@ export const useFirestoreConfig = (userId: string | null): UseFirestoreConfigRet
         ? (updatedWebhooks[0]?.id || null)
         : userProfile.webhooks.activeWebhookId;
 
+      // Clean up active chat ID for the deleted webhook
+      const updatedActiveChatIds = { ...userProfile.webhooks.activeChatIds };
+      if (updatedActiveChatIds && webhookId in updatedActiveChatIds) {
+        delete updatedActiveChatIds[webhookId];
+      }
+
       const webhookConfig: any = {
         webhooks: updatedWebhooks,
+        activeChatIds: updatedActiveChatIds,
       };
       
       // Only add activeWebhookId if it's not null/undefined
@@ -221,6 +233,39 @@ export const useFirestoreConfig = (userId: string | null): UseFirestoreConfigRet
       }
 
       await updateUserWebhooks(userId, webhookConfig);
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  }, [userId, userProfile]);
+
+  // Get active chat ID for a webhook
+  const getActiveChatId = useCallback((webhookId: string): string | null => {
+    if (!userProfile?.webhooks.activeChatIds) return null;
+    return userProfile.webhooks.activeChatIds[webhookId] || null;
+  }, [userProfile]);
+
+  // Set active chat ID for a webhook
+  const setActiveChatId = useCallback(async (webhookId: string, chatId: string | null): Promise<void> => {
+    if (!userId || !userProfile) return;
+    
+    try {
+      // Get current active chat IDs or initialize empty object
+      const currentActiveChatIds = userProfile.webhooks.activeChatIds || {};
+      
+      // Update the mapping
+      const updatedActiveChatIds = { ...currentActiveChatIds };
+      if (chatId) {
+        updatedActiveChatIds[webhookId] = chatId;
+      } else {
+        // Remove the mapping if chatId is null
+        delete updatedActiveChatIds[webhookId];
+      }
+
+      await updateUserWebhooks(userId, {
+        ...userProfile.webhooks,
+        activeChatIds: updatedActiveChatIds,
+      });
     } catch (err: any) {
       setError(err.message);
       throw err;
@@ -257,6 +302,10 @@ export const useFirestoreConfig = (userId: string | null): UseFirestoreConfigRet
     addWebhook,
     updateWebhook,
     deleteWebhook,
+    
+    // Active chat persistence
+    getActiveChatId,
+    setActiveChatId,
     
     // State
     loading,

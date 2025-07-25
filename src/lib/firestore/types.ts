@@ -14,6 +14,7 @@ export interface FirestoreUser {
   };
   webhooks: {
     activeWebhookId?: string;
+    activeChatIds?: Record<string, string>; // webhookId -> chatId mapping
     webhooks: FirestoreWebhook[];
   };
 }

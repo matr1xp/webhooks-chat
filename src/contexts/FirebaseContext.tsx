@@ -79,6 +79,8 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
     addWebhook,
     updateWebhook,
     deleteWebhook,
+    getActiveChatId,
+    setActiveChatId,
     loading: configLoading,
     error: configError,
   } = useFirestoreConfig(user?.uid || null);
@@ -99,7 +101,7 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
     cleanupEmptyChats,
     loading: chatLoading,
     error: chatError,
-  } = useFirestoreChat(user?.uid || null, activeWebhook?.id || null);
+  } = useFirestoreChat(user?.uid || null, activeWebhook?.id || null, getActiveChatId, setActiveChatId);
 
   // Health check function
   const checkWebhookHealth = useCallback(async (webhook?: FirestoreWebhook): Promise<boolean> => {

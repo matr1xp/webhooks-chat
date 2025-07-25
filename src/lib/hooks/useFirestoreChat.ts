@@ -41,7 +41,9 @@ interface UseFirestoreChatReturn {
 
 export const useFirestoreChat = (
   userId: string | null,
-  webhookId: string | null
+  webhookId: string | null,
+  getActiveChatId?: (webhookId: string) => string | null,
+  setActiveChatId?: (webhookId: string, chatId: string | null) => Promise<void>
 ): UseFirestoreChatReturn => {
   const [chats, setChats] = useState<FirestoreChat[]>([]);
   const [activeChat, setActiveChatState] = useState<FirestoreChat | null>(null);
@@ -58,7 +60,7 @@ export const useFirestoreChat = (
   const prevUserIdRef = useRef<string | null>(null);
 
   // Set active chat
-  const setActiveChat = useCallback((chatId: string | null) => {
+  const setActiveChat = useCallback(async (chatId: string | null) => {
     if (chatId) {
       setActiveChatState(prevActive => {
         // Only update if the chatId is different to prevent unnecessary re-renders
@@ -70,7 +72,17 @@ export const useFirestoreChat = (
     } else {
       setActiveChatState(prevActive => prevActive === null ? prevActive : null);
     }
-  }, []); // No dependencies to prevent unnecessary recreations
+
+    // Persist the active chat selection if we have the methods and webhook
+    if (setActiveChatId && webhookId) {
+      try {
+        await setActiveChatId(webhookId, chatId);
+      } catch (error) {
+        // Log error but don't block the UI update
+        console.error('Failed to persist active chat selection:', error);
+      }
+    }
+  }, [setActiveChatId, webhookId]);
 
   // Create new chat
   const createNewChat = useCallback(async (webhookId: string, name?: string): Promise<FirestoreChat> => {
@@ -81,12 +93,16 @@ export const useFirestoreChat = (
       const chatName = name || `Chat ${new Date().toLocaleString()}`;
       
       const newChat = await createChat(chatId, userId, webhookId, chatName);
+      
+      // Automatically set the new chat as active
+      await setActiveChat(newChat.id);
+      
       return newChat;
     } catch (err: any) {
       setError(err.message);
       throw err;
     }
-  }, [userId]);
+  }, [userId, setActiveChat]);
 
   // Update chat name
   const updateChat = useCallback(async (chatId: string, name: string): Promise<void> => {
@@ -225,13 +241,42 @@ export const useFirestoreChat = (
     }
   }, [activeChat]);
 
+  // Initialize active chat from persisted state when chats change
+  useEffect(() => {
+    if (!getActiveChatId || !webhookId || chats.length === 0) return;
+    
+    // Get the persisted active chat ID for this webhook
+    const persistedChatId = getActiveChatId(webhookId);
+    if (!persistedChatId) return;
+    
+    // Check if the persisted chat still exists in the current chats
+    const persistedChat = chats.find(chat => chat.id === persistedChatId);
+    if (persistedChat) {
+      // Only set if it's different from current active chat to avoid unnecessary updates
+      setActiveChatState(prevActive => {
+        if (prevActive?.id === persistedChatId) {
+          return prevActive;
+        }
+        return persistedChat;
+      });
+    } else {
+      // Chat no longer exists, clear the persisted selection
+      if (setActiveChatId) {
+        setActiveChatId(webhookId, null).catch(console.error);
+      }
+    }
+  }, [chats, webhookId, getActiveChatId, setActiveChatId]);
+
   // Subscribe to chats
   // Clear all chat state when user changes
   useEffect(() => {
     const prevUserId = prevUserIdRef.current;
     
+    // console.log('👤 User changed:', { prevUserId, userId });
+    
     // Clear state if user signs out
     if (!userId) {
+      // console.log('🚪 User signed out, clearing chat state');
       setChats([]);
       setActiveChatState(null);
       setMessages([]);
@@ -242,14 +287,18 @@ export const useFirestoreChat = (
       return;
     }
     
-    // Clear state if user switches to a different user
+    // Clear state if user switches to a different user (not just going from null to user)
     if (prevUserId && prevUserId !== userId) {
+      // console.log('🔄 User switched, clearing chat state:', { from: prevUserId, to: userId });
       setChats([]);
       setActiveChatState(null);
       setMessages([]);
       setLoading(true); // Set loading true since we'll load new user's data
       setMessagesLoading(false);
       setError(null);
+    } else if (!prevUserId && userId) {
+      // User is logging in for the first time this session - don't clear state, just log
+      // console.log('👋 User logging in:', userId);
     }
     
     // Update the ref with current userId
@@ -258,14 +307,17 @@ export const useFirestoreChat = (
 
   useEffect(() => {
     if (!userId || !webhookId) {
+      // console.log('📝 No user or webhook, clearing chats:', { userId: !!userId, webhookId: !!webhookId });
       setChats([]);
       setLoading(false);
       return;
     }
 
+    // console.log('📝 Subscribing to chats for user/webhook:', { userId, webhookId });
     setLoading(true);
     
     const unsubscribe = subscribeToWebhookChats(userId, webhookId, (firestoreChats) => {
+      // console.log('📝 Received', firestoreChats.length, 'chats from Firestore');
       setChats(firestoreChats);
       setLoading(false);
     });
@@ -276,10 +328,19 @@ export const useFirestoreChat = (
   // Subscribe to messages for active chat
   useEffect(() => {
     if (!activeChat?.id) {
-      setMessages([]);
-      return;
+      // Don't immediately clear messages when activeChat becomes null during transitions
+      // Only clear after a short delay to avoid flickering during state changes
+      // console.log('🗨️ No active chat detected');
+      const timeoutId = setTimeout(() => {
+        setMessages([]);
+        setMessagesLoading(false);
+        // console.log('🗨️ Cleared messages after timeout - no active chat');
+      }, 100); // 100ms delay to allow for state transitions
+      
+      return () => clearTimeout(timeoutId);
     }
 
+    // console.log('🗨️ Loading messages for chat:', activeChat.name, activeChat.id);
     setMessagesLoading(true);
     
     // Capture the chatId to prevent closure issues
@@ -292,6 +353,7 @@ export const useFirestoreChat = (
         return message;
       });
       
+      // console.log('✅ Loaded', convertedMessages.length, 'messages for chat:', activeChat.name);
       setMessages(convertedMessages);
       setMessagesLoading(false);
     });

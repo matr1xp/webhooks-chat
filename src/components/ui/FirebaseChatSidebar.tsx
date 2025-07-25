@@ -272,8 +272,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                     alt="Webn8 Logo"
                     width={28}
                     height={28}
-                    className="flex-shrink-0 md:w-6 md:h-6"
-                    style={{ width: 'auto', height: '28px' }}
+                    className="flex-shrink-0 w-7 h-7 md:w-6 md:h-6"
                   />
                   <h2 className="text-xl md:text-lg font-semibold truncate" style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}>
                     WebhookIQ

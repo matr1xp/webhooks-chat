@@ -29,7 +29,7 @@ export function MessageList({ messages, isLoading = false, className, fileDataCa
       'w-full p-4 space-y-4 scrollbar-thin',
       className
     )}>
-      {messages.length === 0 ? (
+      {messages.length === 0 && !isLoading ? (
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center text-muted-foreground">
             <div className="mb-4 text-4xl">💬</div>

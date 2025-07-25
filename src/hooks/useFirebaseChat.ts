@@ -64,7 +64,7 @@ export const useFirebaseChat = () => {
   // Firebase-powered actions that match Redux interface
   const setCurrentSession = async (sessionId: string | null) => {
     await ensureAuthenticated();
-    setActiveChat(sessionId);
+    await setActiveChat(sessionId);
   };
 
   const getMessagesForSession = (sessionId: string): Message[] => {
