@@ -1,7 +1,7 @@
 # Custom Domain Setup for Firebase Hosting
 
 ## Overview
-Configure your own domain to point to the Firebase Hosted chat interface at `https://***REMOVED***.web.app`.
+Configure your own domain to point to the Firebase Hosted chat interface at `https://firebase-project-id.web.app`.
 
 ## Prerequisites
 - Domain name that you own and control
@@ -15,7 +15,7 @@ Configure your own domain to point to the Firebase Hosted chat interface at `htt
 #### Step 1: Add Custom Domain
 ```bash
 # Navigate to project directory
-cd /Users/marlon/workspace/Projects/N8N/chat-interface
+cd chat-interface
 
 # Add your custom domain
 firebase hosting:channel:deploy YOUR_DOMAIN.com --only hosting
@@ -40,7 +40,7 @@ Value: [Firebase will provide IP addresses]
 ```
 Type: CNAME
 Name: chat (or your chosen subdomain)
-Value: ***REMOVED***.web.app
+Value: firebase-project-id.web.app
 ```
 
 #### Step 3: Verify Domain Ownership
@@ -54,12 +54,12 @@ Value: [Firebase will provide verification code]
 ### Method 2: Using Firebase Console (Alternative)
 
 #### Step 1: Open Firebase Console
-1. Go to https://console.firebase.google.com/project/***REMOVED***
+1. Go to https://console.firebase.google.com/project/firebase-project-id
 2. Navigate to "Hosting" section
 3. Click "Add custom domain"
 
 #### Step 2: Enter Your Domain
-- Enter your domain name (e.g., `chat.yourdomain.com`)
+- Enter your domain name (e.g., `yourdomain.com`)
 - Follow the verification steps
 
 #### Step 3: Configure DNS
@@ -224,17 +224,9 @@ firebase hosting:sites:list
 
 Make it executable and use:
 ```bash
-chmod +x scripts/verify-custom-domain.sh
-./scripts/verify-custom-domain.sh yourdomain.com
+chmod +x scripts/verify-domain.sh
+./scripts/verify-domain.sh yourdomain.com
 ```
-
-## Next Steps After Domain Setup
-
-1. **Update Documentation**: Update README.md and other docs with new domain
-2. **Update Bookmarks**: Change any development bookmarks to new domain
-3. **Monitor Performance**: Use Google PageSpeed Insights to test new domain
-4. **Set Up Analytics**: Configure Google Analytics with new domain if needed
-5. **Update n8n Configuration**: Update any n8n workflows that reference the old domain
 
 ---
 
