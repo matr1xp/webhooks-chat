@@ -20,9 +20,10 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 
 // Set authentication persistence to local storage
-// This ensures Google authenticated users persist across browser sessions
+// This ensures authenticated users persist across browser sessions and redirects
 if (typeof window !== 'undefined') {
   setPersistence(auth, browserLocalPersistence).catch((error) => {
+    console.error('Failed to set auth persistence:', error);
   });
 }
 
