@@ -6,12 +6,49 @@ import {
   onSnapshot,
   serverTimestamp,
 } from 'firebase/firestore';
+import { v4 as uuidv4 } from 'uuid';
 import { db } from '../firebase';
-import { FirestoreUser, createTimestamp, convertTimestamp } from './types';
+import { FirestoreUser, createTimestamp, convertTimestamp, FirestoreWebhook } from './types';
 import type { User } from '@/types/chat';
 
 // Collection reference
 const USERS_COLLECTION = 'users';
+
+// Create default webhook from environment variables if available
+const createDefaultWebhook = (): FirestoreWebhook | null => {
+  // Check both client-side and server-side environment variables
+  const webhookUrl = 
+    process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 
+    (typeof window === 'undefined' ? process.env.N8N_WEBHOOK_URL : null);
+  
+  const webhookSecret = 
+    process.env.NEXT_PUBLIC_WEBHOOK_SECRET || 
+    (typeof window === 'undefined' ? process.env.WEBHOOK_SECRET : null);
+  
+  const webhookName = 
+    process.env.NEXT_PUBLIC_N8N_WEBHOOK_NAME ||
+    (typeof window === 'undefined' ? process.env.N8N_WEBHOOK_NAME : null) ||
+    'Default Webhook';
+  
+  if (webhookUrl) {
+    const webhook: FirestoreWebhook = {
+      id: uuidv4(),
+      name: webhookName,
+      url: webhookUrl,
+      isActive: true,
+      createdAt: createTimestamp(),
+    };
+    
+    // Only add secret if provided (avoid undefined)
+    if (webhookSecret) {
+      webhook.secret = webhookSecret;
+    }
+    
+    return webhook;
+  }
+  
+  return null;
+};
 
 // Create or update user profile
 export const createUserProfile = async (userId: string, userData: Partial<FirestoreUser['profile']>): Promise<void> => {
@@ -35,6 +72,10 @@ export const createUserProfile = async (userId: string, userData: Partial<Firest
     profileData.email = userData.email;
   }
   
+  // Create default webhook if environment variables are configured
+  const defaultWebhook = createDefaultWebhook();
+  const webhooks = defaultWebhook ? [defaultWebhook] : [];
+  
   const defaultUser: any = {
     id: userId,
     profile: profileData,
@@ -43,13 +84,15 @@ export const createUserProfile = async (userId: string, userData: Partial<Firest
       notifications: true,
     },
     webhooks: {
-      webhooks: [],
+      webhooks: webhooks,
       activeChatIds: {},
     },
   };
   
-  // Only add activeWebhookId if we have one (avoid undefined)
-  // This will be set later when a webhook is selected
+  // Set the default webhook as active if one was created
+  if (defaultWebhook) {
+    defaultUser.webhooks.activeWebhookId = defaultWebhook.id;
+  }
 
   await setDoc(userRef, defaultUser, { merge: true });
 };

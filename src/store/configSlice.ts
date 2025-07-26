@@ -14,10 +14,15 @@ function createDefaultWebhook(): WebhookConfig | null {
     process.env.NEXT_PUBLIC_WEBHOOK_SECRET || 
     (typeof window === 'undefined' ? process.env.WEBHOOK_SECRET : null);
   
+  const webhookName = 
+    process.env.NEXT_PUBLIC_N8N_WEBHOOK_NAME ||
+    (typeof window === 'undefined' ? process.env.N8N_WEBHOOK_NAME : null) ||
+    'Default Webhook';
+  
   if (webhookUrl) {
     return {
       id: uuidv4(),
-      name: 'Default Webhook',
+      name: webhookName,
       url: webhookUrl,
       apiSecret: webhookSecret || undefined,
       isActive: true,

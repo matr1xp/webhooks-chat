@@ -37,7 +37,7 @@ export function useConfig() {
 
   const createDefaultWebhook = () => {
     return context.addWebhook({
-      name: 'Default Webhook',
+      name: process.env.NEXT_PUBLIC_N8N_WEBHOOK_NAME || 'Default Webhook',
       url: process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://your-n8n-instance.com/webhook/chat',
       apiSecret: process.env.NEXT_PUBLIC_WEBHOOK_SECRET,
     });
