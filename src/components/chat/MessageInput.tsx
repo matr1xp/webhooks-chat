@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, KeyboardEvent } from 'react';
+import { useState, useRef, KeyboardEvent, useEffect, useCallback } from 'react';
 import { Send, Paperclip, Loader2 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
@@ -19,13 +19,15 @@ interface MessageInputProps {
   disabled?: boolean;
   placeholder?: string;
   className?: string;
+  autoFocus?: boolean;
 }
 
 export function MessageInput({ 
   onSendMessage, 
   disabled = false, 
   placeholder = "Type a message...",
-  className 
+  className,
+  autoFocus = false
 }: MessageInputProps) {
   const { theme } = useTheme();
   const [message, setMessage] = useState('');
@@ -33,7 +35,43 @@ export function MessageInput({
   const [showFileUpload, setShowFileUpload] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSubmit = async () => {
+
+  // Handle autoFocus when prop changes
+  useEffect(() => {
+    if (autoFocus && !disabled && textareaRef.current) {
+      const focusElement = () => {
+        if (textareaRef.current) {
+          try {
+            // For mobile compatibility, we need to ensure focus happens
+            // in a way that doesn't violate browser policies
+            textareaRef.current.focus({ preventScroll: false });
+            
+            // Set cursor to end for better UX
+            const length = textareaRef.current.value.length;
+            textareaRef.current.setSelectionRange(length, length);
+            
+            // Scroll the element into view if needed (mobile consideration)
+            textareaRef.current.scrollIntoView({ 
+              block: 'nearest', 
+              behavior: 'smooth' 
+            });
+          } catch (error) {
+            // Fallback for browsers that don't support focus options
+            textareaRef.current.focus();
+          }
+        }
+      };
+      
+      // Longer delay for mobile devices to ensure proper rendering
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+      const delay = isMobile ? 300 : 100;
+      
+      const timeoutId = setTimeout(focusElement, delay);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [autoFocus, disabled]);
+
+  const handleSubmit = useCallback(async () => {
     if (!message.trim() || disabled || isSubmitting) return;
 
     setIsSubmitting(true);
@@ -46,14 +84,14 @@ export function MessageInput({
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [message, disabled, isSubmitting, onSendMessage]);
 
-  const handleKeyPress = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
     }
-  };
+  }, [handleSubmit]);
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage(e.target.value);
@@ -146,9 +184,10 @@ export function MessageInput({
                 ref={textareaRef}
                 value={message}
                 onChange={handleTextareaChange}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyDown}
                 placeholder={placeholder}
                 disabled={disabled || isSubmitting}
+                autoFocus={autoFocus && !disabled}
                 className={cn(
                   'w-full min-h-[48px] sm:min-h-[52px] max-h-[120px] px-4 py-3 pr-14 sm:pr-16 rounded-2xl bg-transparent text-sm resize-none focus:outline-none leading-relaxed touch-manipulation',
                   (disabled || isSubmitting) && 'opacity-50 cursor-not-allowed'
@@ -182,8 +221,8 @@ export function MessageInput({
           </div>
         </div>
         
-        {/* Helper text - modernized */}
-        <div className="mt-3 flex items-center justify-center">
+        {/* Helper text - modernized, hidden on mobile */}
+        <div className="mt-3 flex items-center justify-center hidden md:flex">
           <div className="px-3 py-1 rounded-full bg-slate-100/80 dark:bg-slate-700/80 backdrop-blur-sm">
             <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
               Press <kbd className="px-1.5 py-0.5 text-xs font-mono bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300">Enter</kbd> to send, 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -256,6 +256,12 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
     }
   };
 
+  // Memoize autoFocus to prevent unnecessary re-renders
+  const shouldAutoFocus = useMemo(() => 
+    !!(activeWebhook && activeChat && !isLoading), 
+    [activeWebhook?.id, activeChat?.id, isLoading]
+  );
+
   try {
     return (
     <div className={cn(
@@ -340,6 +346,7 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
           <MessageInput
             onSendMessage={handleSendMessage}
             disabled={isLoading || !activeWebhook || !activeChat}
+            autoFocus={shouldAutoFocus}
             placeholder={
               !activeWebhook 
                 ? "Configure a webhook to start chatting..." 
