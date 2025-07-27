@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   updateUserWebhooks,
@@ -34,6 +34,9 @@ export const useFirestoreConfig = (userId: string | null): UseFirestoreConfigRet
   const [userProfile, setUserProfile] = useState<FirestoreUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Track auto-assignment to prevent infinite loops
+  const autoAssignmentRef = useRef<Set<string>>(new Set());
 
   // Get current values
   const theme = userProfile?.preferences.theme || 'light';
@@ -42,28 +45,46 @@ export const useFirestoreConfig = (userId: string | null): UseFirestoreConfigRet
 
   // Auto-set first webhook as active if none is set but webhooks exist
   React.useEffect(() => {
-    if (userId && userProfile && webhooks.length > 0 && !userProfile.webhooks.activeWebhookId) {
-      // Use the setActiveWebhook function defined below
-      const autoSetActive = async () => {
-        try {
-          // Get the most current user profile to avoid stale state
-          const { getUserProfile } = await import('../firestore/users');
-          const currentProfile = await getUserProfile(userId);
-          
-          if (!currentProfile) {
-            throw new Error('User profile not found');
-          }
-          
+    if (!userId || !userProfile || webhooks.length === 0 || userProfile.webhooks.activeWebhookId) {
+      return;
+    }
+    
+    // Create a unique key for this auto-assignment attempt
+    const assignmentKey = `${userId}-${webhooks[0]?.id}`;
+    
+    // Skip if we've already tried to auto-assign for this user/webhook combination
+    if (autoAssignmentRef.current.has(assignmentKey)) {
+      return;
+    }
+    
+    // Mark this assignment as attempted to prevent loops
+    autoAssignmentRef.current.add(assignmentKey);
+    
+    const autoSetActive = async () => {
+      try {
+        // Get the most current user profile to avoid stale state
+        const { getUserProfile } = await import('../firestore/users');
+        const currentProfile = await getUserProfile(userId);
+        
+        if (!currentProfile) {
+          throw new Error('User profile not found');
+        }
+        
+        // Double-check that we still need to set an active webhook
+        if (!currentProfile.webhooks.activeWebhookId && webhooks.length > 0) {
           await updateUserWebhooks(userId, {
             ...currentProfile.webhooks,
             activeWebhookId: webhooks[0].id,
           });
-        } catch (err: any) {
         }
-      };
-      autoSetActive();
-    }
-  }, [userId, userProfile, webhooks.length, userProfile?.webhooks.activeWebhookId]);
+      } catch (err: any) {
+        // Remove from attempted set if it failed, so we can retry later
+        autoAssignmentRef.current.delete(assignmentKey);
+      }
+    };
+    
+    autoSetActive();
+  }, [userId, webhooks.length, userProfile?.webhooks.activeWebhookId]); // Removed userProfile from dependencies
 
   // Set theme
   const setTheme = useCallback(async (newTheme: 'light' | 'dark'): Promise<void> => {
@@ -110,9 +131,6 @@ export const useFirestoreConfig = (userId: string | null): UseFirestoreConfigRet
     secret?: string
   ): Promise<FirestoreWebhook> => {
     if (!userId) throw new Error('User ID required');
-    
-    // Generate unique ID for logging purposes
-    const callId = Math.random().toString(36).substring(2, 9);
     
     // Wait for user profile to be loaded if it's not available yet
     let currentProfile = userProfile;

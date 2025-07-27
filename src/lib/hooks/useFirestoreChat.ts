@@ -64,20 +64,32 @@ export const useFirestoreChat = (
 
   // Set active chat
   const setActiveChat = useCallback(async (chatId: string | null) => {
+    let shouldPersist = false;
+    
     if (chatId) {
       setActiveChatState(prevActive => {
         // Only update if the chatId is different to prevent unnecessary re-renders
         if (prevActive?.id === chatId) return prevActive;
         
         const chat = chatsRef.current.find(c => c.id === chatId);
-        return chat || null;
+        const newChat = chat || null;
+        
+        // Only persist if we actually changed the active chat
+        shouldPersist = newChat !== null && prevActive?.id !== chatId;
+        
+        return newChat;
       });
     } else {
-      setActiveChatState(prevActive => prevActive === null ? prevActive : null);
+      setActiveChatState(prevActive => {
+        // Only persist if we actually had an active chat before
+        shouldPersist = prevActive !== null;
+        return prevActive === null ? prevActive : null;
+      });
     }
 
     // Persist the active chat selection if we have the methods and webhook
-    if (setActiveChatId && webhookId) {
+    // BUT only if we actually changed the active chat to prevent loops
+    if (setActiveChatId && webhookId && shouldPersist) {
       try {
         await setActiveChatId(webhookId, chatId);
       } catch (error) {
@@ -324,6 +336,8 @@ export const useFirestoreChat = (
         }
         return persistedChat;
       });
+      // NOTE: We don't call setActiveChatId here because the chat is already persisted
+      // This prevents the infinite loop during webhook switching
     } else {
       // Chat no longer exists, clear the persisted selection
       if (setActiveChatId) {
