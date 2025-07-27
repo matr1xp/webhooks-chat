@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, ReactNode, useCallback, useRef } from 'react';
 import { useFirestoreAuth } from '@/lib/hooks/useFirestoreAuth';
 import { useFirestoreConfig } from '@/lib/hooks/useFirestoreConfig';
 import { useFirestoreChat } from '@/lib/hooks/useFirestoreChat';
@@ -109,28 +109,88 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
     error: chatError,
   } = useFirestoreChat(user?.uid || null, activeWebhook?.id || null, getActiveChatId, setActiveChatId);
 
-  // Health check function
+  // Rate limiting and caching for health checks
+  const healthCheckCache = useRef<Map<string, { result: boolean; timestamp: number; failureCount: number }>>(new Map());
+  const pendingHealthChecks = useRef<Map<string, Promise<boolean>>>(new Map());
+
+  // Health check function with rate limiting and caching - stable reference, no activeWebhook dependency to prevent re-render loops
   const checkWebhookHealth = useCallback(async (webhook?: FirestoreWebhook): Promise<boolean> => {
+    // Use the passed webhook parameter, or fall back to current activeWebhook at call time
     const targetWebhook = webhook || activeWebhook;
     if (!targetWebhook) {
       return false;
     }
 
-    try {
-      // Convert FirestoreWebhook to WebhookConfig format
-      const webhookConfig = {
-        id: targetWebhook.id,
-        name: targetWebhook.name,
-        url: targetWebhook.url,
-        apiSecret: targetWebhook.secret,
-        isActive: targetWebhook.isActive,
-        createdAt: convertTimestamp(targetWebhook.createdAt),
-      };
-      return await webhookClient.checkHealth(webhookConfig);
-    } catch (error) {
-      return false;
+    const webhookId = targetWebhook.id;
+    const now = Date.now();
+    
+    // Check if there's already a pending health check for this webhook
+    const pendingCheck = pendingHealthChecks.current.get(webhookId);
+    if (pendingCheck) {
+      return pendingCheck;
     }
-  }, [activeWebhook]);
+
+    // Check cache first
+    const cached = healthCheckCache.current.get(webhookId);
+    if (cached) {
+      const timeSinceCheck = now - cached.timestamp;
+      
+      // Cache rules:
+      // - Successful checks: cache for 30 seconds
+      // - Failed checks: use exponential backoff (min 5s, max 60s)
+      const cacheValidTime = cached.result 
+        ? 30 * 1000 // 30 seconds for successful checks
+        : Math.min(5000 * Math.pow(2, cached.failureCount), 60000); // Exponential backoff for failures
+      
+      if (timeSinceCheck < cacheValidTime) {
+        return cached.result;
+      }
+    }
+
+    // Create the health check promise
+    const healthCheckPromise = (async (): Promise<boolean> => {
+      try {
+        // Convert FirestoreWebhook to WebhookConfig format
+        const webhookConfig = {
+          id: targetWebhook.id,
+          name: targetWebhook.name,
+          url: targetWebhook.url,
+          apiSecret: targetWebhook.secret,
+          isActive: targetWebhook.isActive,
+          createdAt: convertTimestamp(targetWebhook.createdAt),
+        };
+        
+        const result = await webhookClient.checkHealth(webhookConfig);
+        
+        // Update cache with result
+        const failureCount = cached?.result === false ? (cached.failureCount + 1) : 0;
+        healthCheckCache.current.set(webhookId, {
+          result,
+          timestamp: now,
+          failureCount: result ? 0 : failureCount
+        });
+        
+        return result;
+      } catch (error) {
+        // Update cache with failure
+        const failureCount = cached?.result === false ? (cached.failureCount + 1) : 1;
+        healthCheckCache.current.set(webhookId, {
+          result: false,
+          timestamp: now,
+          failureCount
+        });
+        return false;
+      } finally {
+        // Remove from pending checks
+        pendingHealthChecks.current.delete(webhookId);
+      }
+    })();
+
+    // Store the pending promise
+    pendingHealthChecks.current.set(webhookId, healthCheckPromise);
+    
+    return healthCheckPromise;
+  }, []); // No dependencies - stable function reference
 
   const value: FirebaseContextType = {
     // Authentication
