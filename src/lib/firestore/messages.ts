@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { FirestoreMessage, createTimestamp, convertTimestamp } from './types';
-import { incrementMessageCount } from './chats';
+import { incrementMessageCount, decrementMessageCount } from './chats';
 import type { Message } from '@/types/chat';
 
 // Collection reference
@@ -126,6 +126,9 @@ export const deleteMessage = async (chatId: string, messageId: string): Promise<
   
   const messageRef = doc(getMessagesCollection(chatId), messageId);
   await deleteDoc(messageRef);
+  
+  // Decrement the message count in the chat
+  await decrementMessageCount(chatId);
 };
 
 // Delete all messages in a chat

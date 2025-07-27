@@ -4,7 +4,8 @@ import { Message } from '@/types/chat';
 import { formatTimestamp, cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useFirebase } from '@/contexts/FirebaseContext';
-import { Check, CheckCheck, X, Clock, User } from 'lucide-react';
+import { Check, CheckCheck, X, Clock, User, Trash2, Loader2 } from 'lucide-react';
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -18,7 +19,9 @@ interface MessageBubbleProps {
 
 export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBubbleProps) {
   const { theme } = useTheme();
-  const { user } = useFirebase();
+  const { user, deleteMessage, deleteBotReply } = useFirebase();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   // Determine if this is a user message (default to true if not explicitly set)
   const actualIsUser = isUser !== undefined ? isUser : !message.isBot;
 
@@ -138,11 +141,78 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
     }
   };
 
+  const handleDelete = async () => {
+    if (isDeleting) return;
+    
+    setIsDeleting(true);
+    setShowDeleteConfirm(false);
+    
+    try {
+      await deleteMessage(message.id);
+      
+      // If this is a user message, also delete the bot reply
+      if (actualIsUser) {
+        await deleteBotReply(message.id);
+      }
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+      // Could add toast notification here
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowDeleteConfirm(true);
+  };
+
+  const handleCancelDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowDeleteConfirm(false);
+  };
+
   return (
-    <div className="w-full mb-6 group animate-message-in">
+    <div className={cn(
+      "w-full mb-6 group animate-message-in transition-opacity duration-300",
+      isDeleting && "opacity-50 pointer-events-none"
+    )}>
       {/* User messages - right aligned */}
       {actualIsUser && (
         <div className="flex justify-end items-start space-x-3">
+          {/* Delete button for user messages */}
+          <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            {showDeleteConfirm ? (
+              <div className="flex items-center space-x-1 bg-white dark:bg-slate-800 rounded-lg px-2 py-1 shadow-lg border border-slate-200 dark:border-slate-600">
+                <span className="text-xs text-slate-600 dark:text-slate-300">Delete?</span>
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="text-red-600 hover:text-red-700 disabled:opacity-50 p-1"
+                  title="Confirm delete"
+                >
+                  {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                </button>
+                <button
+                  onClick={handleCancelDelete}
+                  className="text-slate-500 hover:text-slate-600 p-1"
+                  title="Cancel"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleDeleteClick}
+                disabled={isDeleting}
+                className="text-slate-400 hover:text-red-500 transition-colors duration-200 disabled:opacity-50 p-1 rounded"
+                title="Delete message"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          
           <div className={cn(
             'relative max-w-xs sm:max-w-sm px-4 py-3 rounded-2xl rounded-tr-md',
             'text-white shadow-lg user-message',
@@ -408,6 +478,39 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
             <div className="flex items-center justify-between mt-2 text-xs" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>
               <span className="font-medium">AI Assistant • {formatTimestamp(message.timestamp)}</span>
             </div>
+          </div>
+          
+          {/* Delete button for bot messages - positioned to the right */}
+          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            {showDeleteConfirm ? (
+              <div className="flex items-center space-x-1 bg-white dark:bg-slate-800 rounded-lg px-2 py-1 shadow-lg border border-slate-200 dark:border-slate-600">
+                <span className="text-xs text-slate-600 dark:text-slate-300">Delete?</span>
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="text-red-600 hover:text-red-700 disabled:opacity-50 p-1"
+                  title="Confirm delete"
+                >
+                  {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                </button>
+                <button
+                  onClick={handleCancelDelete}
+                  className="text-slate-500 hover:text-slate-600 p-1"
+                  title="Cancel"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleDeleteClick}
+                disabled={isDeleting}
+                className="text-slate-400 hover:text-red-500 transition-colors duration-200 disabled:opacity-50 p-1 rounded"
+                title="Delete message"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       )}

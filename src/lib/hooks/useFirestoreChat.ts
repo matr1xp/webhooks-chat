@@ -10,6 +10,7 @@ import {
 import {
   addMessage as addFirestoreMessage,
   updateMessageStatus,
+  deleteMessage as deleteFirestoreMessage,
   subscribeToChatMessages,
   convertFirestoreMessageToMessage,
   convertMessageToFirestore,
@@ -33,6 +34,8 @@ interface UseFirestoreChatReturn {
   addMessage: (messageData: Omit<Message, 'id' | 'timestamp' | 'status'>) => Promise<Message>;
   addBotMessage: (content: string, metadata?: Record<string, any>) => Promise<Message>;
   updateMessage: (messageId: string, status: Message['status']) => Promise<void>;
+  deleteMessage: (messageId: string) => Promise<void>;
+  deleteBotReply: (userMessageId: string) => Promise<void>;
   
   // State
   loading: boolean;
@@ -241,6 +244,68 @@ export const useFirestoreChat = (
     }
   }, [activeChat]);
 
+  // Delete message
+  const deleteMessage = useCallback(async (messageId: string): Promise<void> => {
+    if (!activeChat) throw new Error('Active chat is required');
+    if (!activeChat.id || activeChat.id.trim() === '') {
+      throw new Error('Active chat ID cannot be empty');
+    }
+    if (!messageId || messageId.trim() === '') {
+      throw new Error('Message ID cannot be empty');
+    }
+    
+    try {
+      await deleteFirestoreMessage(activeChat.id, messageId);
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  }, [activeChat]);
+
+  // Delete bot reply following a user message
+  const deleteBotReply = useCallback(async (userMessageId: string): Promise<void> => {
+    if (!activeChat) throw new Error('Active chat is required');
+    if (!userMessageId || userMessageId.trim() === '') {
+      throw new Error('User message ID cannot be empty');
+    }
+    
+    try {
+      // Find the user message
+      const userMessage = messages.find(msg => msg.id === userMessageId);
+      if (!userMessage) {
+        throw new Error('User message not found');
+      }
+      
+      const userTimestamp = new Date(userMessage.timestamp).getTime();
+      
+      // Find the bot message with the closest timestamp after the user message
+      // This ensures we get the actual reply, not just any bot message
+      let closestBotMessage = null;
+      let closestTimeDiff = Infinity;
+      
+      for (const msg of messages) {
+        if (msg.isBot) {
+          const botTimestamp = new Date(msg.timestamp).getTime();
+          const timeDiff = botTimestamp - userTimestamp;
+          
+          // Only consider bot messages that come after the user message
+          // and are within a reasonable time window (e.g., 10 minutes)
+          if (timeDiff > 0 && timeDiff < 10 * 60 * 1000 && timeDiff < closestTimeDiff) {
+            closestBotMessage = msg;
+            closestTimeDiff = timeDiff;
+          }
+        }
+      }
+      
+      if (closestBotMessage) {
+        await deleteFirestoreMessage(activeChat.id, closestBotMessage.id);
+      }
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  }, [activeChat, messages]);
+
   // Initialize active chat from persisted state when chats change
   useEffect(() => {
     if (!getActiveChatId || !webhookId || chats.length === 0) return;
@@ -377,6 +442,8 @@ export const useFirestoreChat = (
     addMessage,
     addBotMessage,
     updateMessage,
+    deleteMessage,
+    deleteBotReply,
     
     // State
     loading,

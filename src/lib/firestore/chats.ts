@@ -119,6 +119,16 @@ export const incrementMessageCount = async (chatId: string): Promise<void> => {
   });
 };
 
+// Decrement message count
+export const decrementMessageCount = async (chatId: string): Promise<void> => {
+  const chatRef = doc(db, CHATS_COLLECTION, chatId);
+  
+  await updateDoc(chatRef, {
+    messageCount: increment(-1),
+    lastActivity: createTimestamp(),
+  });
+};
+
 // Delete chat
 export const deleteChat = async (chatId: string): Promise<void> => {
   const chatRef = doc(db, CHATS_COLLECTION, chatId);

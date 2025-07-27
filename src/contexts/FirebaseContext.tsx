@@ -49,6 +49,8 @@ interface FirebaseContextType {
   addMessage: (messageData: Omit<Message, 'id' | 'timestamp' | 'status'>) => Promise<Message>;
   addBotMessage: (content: string, metadata?: Record<string, any>) => Promise<Message>;
   updateMessage: (messageId: string, status: Message['status']) => Promise<void>;
+  deleteMessage: (messageId: string) => Promise<void>;
+  deleteBotReply: (userMessageId: string) => Promise<void>;
 }
 
 const FirebaseContext = createContext<FirebaseContextType | undefined>(undefined);
@@ -96,6 +98,8 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
     addMessage,
     addBotMessage,
     updateMessage,
+    deleteMessage,
+    deleteBotReply,
     setActiveChat,
     createNewChat,
     updateChat,
@@ -168,6 +172,8 @@ export function FirebaseProvider({ children }: FirebaseProviderProps) {
     addMessage,
     addBotMessage,
     updateMessage,
+    deleteMessage,
+    deleteBotReply,
   };
 
   return (
