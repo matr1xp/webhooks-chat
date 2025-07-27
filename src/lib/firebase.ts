@@ -19,12 +19,22 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
-// Set authentication persistence to local storage
+// Set authentication persistence to local storage with error handling
 // This ensures authenticated users persist across browser sessions and redirects
 if (typeof window !== 'undefined') {
-  setPersistence(auth, browserLocalPersistence).catch((error) => {
-    console.error('Failed to set auth persistence:', error);
-  });
+  // Check if localStorage is available before setting persistence
+  try {
+    const testKey = '__firebase-auth-test__';
+    localStorage.setItem(testKey, 'test');
+    localStorage.removeItem(testKey);
+    
+    // If localStorage is available, set persistence
+    setPersistence(auth, browserLocalPersistence).catch((error) => {
+      console.warn('Failed to set Firebase auth persistence, continuing without persistence:', error);
+    });
+  } catch (error) {
+    console.warn('localStorage not available for Firebase auth persistence:', error);
+  }
 }
 
 export default app;

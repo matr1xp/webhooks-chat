@@ -526,8 +526,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                             if (e.key === 'Escape') handleCancelEdit();
                           }}
                           autoFocus
-                          className="w-full text-sm font-medium bg-transparent border-none outline-none"
-                          style={{ color: theme === 'light' ? '#374151' : '#ffffff' }}
+                          className="w-full text-sm font-medium bg-transparent border-none outline-none text-[#374151] dark:text-[#ffffff]"
                         />
                       ) : (
                         <h3 className="text-sm font-medium truncate" style={{ 

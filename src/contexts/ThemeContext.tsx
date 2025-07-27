@@ -24,13 +24,32 @@ interface ThemeProviderProps {
   children: React.ReactNode;
 }
 
+// Safe localStorage access with error handling
+const safeLocalStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      return localStorage.getItem(key);
+    } catch (error) {
+      console.warn('localStorage.getItem failed:', error);
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    try {
+      localStorage.setItem(key, value);
+    } catch (error) {
+      console.warn('localStorage.setItem failed:', error);
+    }
+  }
+};
+
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>('light');
   const [mounted, setMounted] = useState(false);
 
   // Load theme from localStorage on mount
   useEffect(() => {
-    const savedTheme = localStorage.getItem('chat-theme') as Theme;
+    const savedTheme = safeLocalStorage.getItem('chat-theme') as Theme;
     if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
       setTheme(savedTheme);
     } else {
@@ -44,7 +63,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   // Save theme to localStorage when it changes
   useEffect(() => {
     if (mounted) {
-      localStorage.setItem('chat-theme', theme);
+      safeLocalStorage.setItem('chat-theme', theme);
     }
   }, [theme, mounted]);
 
