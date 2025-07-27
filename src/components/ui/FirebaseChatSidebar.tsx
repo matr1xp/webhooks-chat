@@ -122,22 +122,31 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
 
   const handleDeleteChat = useCallback(async (chatId: string) => {
     try {
+      const isDeletingActiveChat = activeChat?.id === chatId;
+      
       // Calculate next active chat before deletion to avoid race condition
       let nextActiveChat: string | null = null;
-      if (activeChat?.id === chatId) {
+      if (isDeletingActiveChat) {
         const remainingChats = chatsForActiveWebhook.filter(chat => chat.id !== chatId);
         nextActiveChat = remainingChats.length > 0 ? remainingChats[0].id : null;
+        
+        // Set active chat to null BEFORE deletion to clear the UI immediately
+        setActiveChat(null);
       }
       
-      // Delete the chat first
+      // Delete the chat
       await deleteChat(chatId);
       setShowDeleteModal(null);
       
-      // Update active chat only if we deleted the current active chat
-      if (activeChat?.id === chatId) {
-        setActiveChat(nextActiveChat);
+      // Set the next active chat after deletion (if there was one)
+      if (isDeletingActiveChat && nextActiveChat) {
+        // Small delay to ensure Firestore has updated the chats list
+        setTimeout(() => {
+          setActiveChat(nextActiveChat);
+        }, 100);
       }
     } catch (error) {
+      console.error('Error deleting chat:', error);
     }
   }, [activeChat?.id, chatsForActiveWebhook, deleteChat, setActiveChat]);
 

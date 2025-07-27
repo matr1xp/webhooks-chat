@@ -4,7 +4,7 @@ import { Message } from '@/types/chat';
 import { formatTimestamp, cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useFirebase } from '@/contexts/FirebaseContext';
-import { Check, CheckCheck, X, Clock, User, Trash2, Loader2 } from 'lucide-react';
+import { Check, CheckCheck, X, Clock, User, Trash2, Loader2, Copy } from 'lucide-react';
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -22,6 +22,7 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
   const { user, deleteMessage, deleteBotReply } = useFirebase();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [copied, setCopied] = useState(false);
   // Determine if this is a user message (default to true if not explicitly set)
   const actualIsUser = isUser !== undefined ? isUser : !message.isBot;
 
@@ -172,6 +173,50 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
     setShowDeleteConfirm(false);
   };
 
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      // Extract plain text content, stripping any markdown formatting
+      const textContent = message.content.replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+                                         .replace(/\*(.*?)\*/g, '$1')     // Remove italic
+                                         .replace(/`(.*?)`/g, '$1')       // Remove inline code
+                                         .replace(/```[\s\S]*?```/g, (match) => {
+                                           // Keep code blocks but remove the backticks
+                                           return match.replace(/```[^\n]*\n?/g, '').replace(/```/g, '');
+                                         })
+                                         .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Convert links to text
+                                         .replace(/^#+\s+/gm, '')         // Remove headers
+                                         .replace(/^>\s+/gm, '')          // Remove blockquotes
+                                         .trim();
+
+      // Try modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(textContent);
+      } else {
+        // Fallback for older browsers or non-secure contexts
+        const textArea = document.createElement('textarea');
+        textArea.value = textContent;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      
+      // Show success feedback
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      
+    } catch (error) {
+      console.error('Failed to copy message:', error);
+      // Could add toast notification here for error feedback
+    }
+  };
+
   return (
     <div className={cn(
       "w-full mb-6 group animate-message-in transition-opacity duration-300",
@@ -181,7 +226,7 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
       {actualIsUser && (
         <div className="flex justify-end items-start space-x-3">
           {/* Delete button for user messages */}
-          <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="flex items-center space-x-2 opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
             {showDeleteConfirm ? (
               <div className="flex items-center space-x-1 bg-white dark:bg-slate-800 rounded-lg px-2 py-1 shadow-lg border border-slate-200 dark:border-slate-600">
                 <span className="text-xs text-slate-600 dark:text-slate-300">Delete?</span>
@@ -480,8 +525,8 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
             </div>
           </div>
           
-          {/* Delete button for bot messages - positioned to the right */}
-          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          {/* Action buttons for bot messages - positioned to the right */}
+          <div className="flex items-center space-x-1 opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
             {showDeleteConfirm ? (
               <div className="flex items-center space-x-1 bg-white dark:bg-slate-800 rounded-lg px-2 py-1 shadow-lg border border-slate-200 dark:border-slate-600">
                 <span className="text-xs text-slate-600 dark:text-slate-300">Delete?</span>
@@ -502,14 +547,26 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
                 </button>
               </div>
             ) : (
-              <button
-                onClick={handleDeleteClick}
-                disabled={isDeleting}
-                className="text-slate-400 hover:text-red-500 transition-colors duration-200 disabled:opacity-50 p-1 rounded"
-                title="Delete message"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <>
+                {/* Copy button */}
+                <button
+                  onClick={handleCopy}
+                  className="text-slate-400 hover:text-blue-500 transition-colors duration-200 p-1 rounded"
+                  title="Copy message"
+                >
+                  {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                </button>
+                
+                {/* Delete button */}
+                <button
+                  onClick={handleDeleteClick}
+                  disabled={isDeleting}
+                  className="text-slate-400 hover:text-red-500 transition-colors duration-200 disabled:opacity-50 p-1 rounded"
+                  title="Delete message"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
             )}
           </div>
         </div>
