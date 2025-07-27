@@ -45,6 +45,40 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
     getMessagesForSession,
   } = USE_FIREBASE ? firebaseChat : reduxChat;
 
+  // Helper function to generate chat name from first message
+  const generateChatName = (content: string): string => {
+    // Remove extra whitespace and clean up the content
+    const cleanContent = content.trim().replace(/\s+/g, ' ');
+    
+    // If content is too short, return as is
+    if (cleanContent.length <= 35) {
+      return cleanContent;
+    }
+    
+    // Find a good breaking point (end of sentence, comma, or word boundary)
+    let breakPoint = 35;
+    
+    // Look for sentence end within first 45 characters
+    const sentenceEnd = cleanContent.substring(0, 45).search(/[.!?]/);
+    if (sentenceEnd > 15 && sentenceEnd < 35) {
+      return cleanContent.substring(0, sentenceEnd + 1).trim();
+    }
+    
+    // Look for comma within first 40 characters
+    const commaIndex = cleanContent.substring(0, 40).lastIndexOf(',');
+    if (commaIndex > 15) {
+      breakPoint = commaIndex;
+    } else {
+      // Find last space before character 35 to avoid cutting words
+      const lastSpace = cleanContent.substring(0, 35).lastIndexOf(' ');
+      if (lastSpace > 15) {
+        breakPoint = lastSpace;
+      }
+    }
+    
+    return cleanContent.substring(0, breakPoint).trim() + '...';
+  };
+
 
   const [userId] = useState(() => generateUserId());
   
@@ -173,6 +207,23 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
         setFileCacheData(message.id, fileData.data);
       }
 
+      // Auto-rename chat if this is the first user message
+      if (USE_FIREBASE && activeChat && type === 'text') {
+        // Check if this is the first user message by counting existing user messages
+        const userMessages = messages.filter(msg => !msg.isBot);
+        
+        // If no user messages existed before this one, and the chat has a default name, rename it
+        if (userMessages.length === 0 && activeChat.name && activeChat.name.startsWith('Chat ')) {
+          try {
+            const newChatName = generateChatName(sanitizedContent);
+            await firebase.updateChat(activeChat.id, newChatName);
+          } catch (error) {
+            console.warn('Failed to auto-rename chat:', error);
+            // Don't block the message sending if renaming fails
+          }
+        }
+      }
+
       // Message count will be updated automatically by useEffect
 
       setLoading(true);
@@ -273,8 +324,8 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
       {/* Subtle background pattern */}
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDEyNywgMTI3LCAxMjcsIDAuMDMpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-40 dark:opacity-20"></div>
       
-      {/* Header - Modern glassmorphism design */}
-      <div className="flex-shrink-0 border-b shadow-sm z-20 relative chat-header">
+      {/* Header - Modern glassmorphism design, fixed on mobile */}
+      <div className="flex-shrink-0 border-b shadow-sm z-30 relative chat-header chat-header-top">
         <div className="p-4 sm:p-6">
           <div className="flex items-center justify-between">
             {/* Mobile Sidebar Button */}
@@ -330,8 +381,12 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
         </div>
       )}
 
-      {/* Scrollable Messages Area with improved styling */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin relative z-10">
+      {/* Scrollable Messages Area with improved styling, accounting for fixed header and input on mobile */}
+      <div className={cn(
+        "flex-1 overflow-y-auto scrollbar-thin relative z-10 chat-messages-area",
+        "pt-20 md:pt-0 pb-24 md:pb-0", // Account for fixed header and input on mobile
+        error && "pt-32 md:pt-0" // Additional padding when error banner is shown
+      )}>
         <MessageList 
           messages={messages} 
           isLoading={isLoading}
@@ -342,7 +397,7 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
 
       {/* Input - Modern floating design */}
       <div className="flex-shrink-0 z-20 relative">
-        <div className="backdrop-blur-xl border-t shadow-lg chat-header">
+        <div className="backdrop-blur-xl border-t shadow-lg chat-input-container">
           <MessageInput
             onSendMessage={handleSendMessage}
             disabled={isLoading || !activeWebhook || !activeChat}

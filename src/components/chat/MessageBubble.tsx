@@ -228,23 +228,25 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
           {/* Delete button for user messages */}
           <div className="flex items-center space-x-2 opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
             {showDeleteConfirm ? (
-              <div className="flex items-center space-x-1 bg-white dark:bg-slate-800 rounded-lg px-2 py-1 shadow-lg border border-slate-200 dark:border-slate-600">
-                <span className="text-xs text-slate-600 dark:text-slate-300">Delete?</span>
-                <button
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="text-red-600 hover:text-red-700 disabled:opacity-50 p-1"
-                  title="Confirm delete"
-                >
-                  {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                </button>
-                <button
-                  onClick={handleCancelDelete}
-                  className="text-slate-500 hover:text-slate-600 p-1"
-                  title="Cancel"
-                >
-                  <X className="w-3 h-3" />
-                </button>
+              <div className="flex flex-col items-center bg-white dark:bg-slate-800 rounded-lg px-2 py-1 shadow-lg border border-slate-200 dark:border-slate-600">
+                <span className="text-xs text-slate-600 dark:text-slate-300 mb-1">Delete?</span>
+                <div className="flex items-center space-x-1">
+                  <button
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="text-red-600 hover:text-red-700 disabled:opacity-50 p-1"
+                    title="Confirm delete"
+                  >
+                    {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                  </button>
+                  <button
+                    onClick={handleCancelDelete}
+                    className="text-slate-500 hover:text-slate-600 p-1"
+                    title="Cancel"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             ) : (
               <button
@@ -525,26 +527,28 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
             </div>
           </div>
           
-          {/* Action buttons for bot messages - positioned to the right */}
-          <div className="flex items-center space-x-1 opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+          {/* Action buttons for bot messages - positioned vertically to save horizontal space */}
+          <div className="flex flex-col items-center space-y-1 opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
             {showDeleteConfirm ? (
-              <div className="flex items-center space-x-1 bg-white dark:bg-slate-800 rounded-lg px-2 py-1 shadow-lg border border-slate-200 dark:border-slate-600">
-                <span className="text-xs text-slate-600 dark:text-slate-300">Delete?</span>
-                <button
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="text-red-600 hover:text-red-700 disabled:opacity-50 p-1"
-                  title="Confirm delete"
-                >
-                  {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                </button>
-                <button
-                  onClick={handleCancelDelete}
-                  className="text-slate-500 hover:text-slate-600 p-1"
-                  title="Cancel"
-                >
-                  <X className="w-3 h-3" />
-                </button>
+              <div className="flex flex-col items-center bg-white dark:bg-slate-800 rounded-lg px-2 py-1 shadow-lg border border-slate-200 dark:border-slate-600">
+                <span className="text-xs text-slate-600 dark:text-slate-300 mb-1">Delete?</span>
+                <div className="flex items-center space-x-1">
+                  <button
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="text-red-600 hover:text-red-700 disabled:opacity-50 p-1"
+                    title="Confirm delete"
+                  >
+                    {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                  </button>
+                  <button
+                    onClick={handleCancelDelete}
+                    className="text-slate-500 hover:text-slate-600 p-1"
+                    title="Cancel"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             ) : (
               <>

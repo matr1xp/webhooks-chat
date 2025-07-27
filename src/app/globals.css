@@ -164,6 +164,73 @@
     @apply backdrop-blur-xl bg-white/80 border-white/20;
   }
   
+  /* Mobile safe area support for fixed header */
+  @supports (padding-top: env(safe-area-inset-top)) {
+    .chat-header {
+      padding-top: env(safe-area-inset-top);
+    }
+    
+    /* Reset safe area padding on desktop */
+    @media (min-width: 768px) {
+      .chat-header {
+        padding-top: 0;
+      }
+    }
+  }
+  
+  /* Enhanced mobile header positioning - only target the top header */
+  @media (max-width: 767px) {
+    .chat-header-top {
+      position: fixed !important;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 40;
+    }
+    
+    /* Error banner positioning on mobile */
+    .chat-header-top + div {
+      position: fixed !important;
+      top: calc(5rem + env(safe-area-inset-top, 0px));
+      left: 0;
+      right: 0;
+      z-index: 35;
+    }
+    
+    /* Adjust container height to account for fixed header */
+    .chat-container {
+      height: 100vh;
+      height: 100dvh; /* Use dynamic viewport height if supported */
+    }
+    
+    /* Make input area stick to bottom on mobile with proper padding */
+    .chat-input-container {
+      position: fixed !important;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 30;
+      padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    }
+    
+    /* Fix scrolling area for mobile when header and input are fixed */
+    .chat-messages-area {
+      position: fixed !important;
+      top: calc(5rem + env(safe-area-inset-top, 0px));
+      bottom: 7rem; /* Account for input area height */
+      left: 0;
+      right: 0;
+      overflow-y: auto !important;
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+    }
+    
+    /* Adjust when error banner is present */
+    .chat-header-top + div ~ .chat-messages-area {
+      top: calc(9rem + env(safe-area-inset-top, 0px)) !important;
+    }
+  }
+  
   .light .chat-header h1 {
     color: rgb(17 24 39); /* gray-900 */
     font-family: 'Nordhead Typeface', sans-serif;
@@ -186,6 +253,15 @@
   .dark .chat-header p {
     color: rgb(148 163 184); /* slate-400 */
     font-family: 'Nordhead Typeface', sans-serif;
+  }
+  
+  /* Theme-aware input container */
+  .light .chat-input-container {
+    @apply backdrop-blur-xl bg-white/80 border-white/20;
+  }
+  
+  .dark .chat-input-container {
+    @apply backdrop-blur-xl bg-slate-800/80 border-slate-700/40;
   }
   
   /* Theme-aware input */
