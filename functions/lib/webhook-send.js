@@ -37,8 +37,11 @@ function validateWebhookPayload(body) {
     }
     return body;
 }
+// Get region from environment variable or default to Europe North
+const deployRegion = process.env.FIREBASE_FUNCTIONS_REGION || 'us-central1';
 exports.webhookSend = (0, https_1.onRequest)({
     cors: true,
+    region: deployRegion,
 }, async (req, res) => {
     var _a, _b, _c, _d, _e, _f;
     try {
@@ -134,7 +137,7 @@ exports.webhookSend = (0, https_1.onRequest)({
                     }
                     // Check for actual HTML structure patterns, not just tag names
                     const htmlStructureRegex = /<(html|head|body|!DOCTYPE)[^>]*>/i;
-                    const htmlTagRegex = /<([a-zA-Z][a-zA-Z0-9]*)\s*[^>]*>(.*?)<\/\1>/s;
+                    const htmlTagRegex = /<([a-zA-Z][a-zA-Z0-9]*)\s*[^>]*>([\s\S]*?)<\/\1>/;
                     // Look for actual HTML structure or properly formed tags
                     return htmlStructureRegex.test(trimmed) || htmlTagRegex.test(trimmed);
                 };

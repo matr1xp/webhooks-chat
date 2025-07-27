@@ -80,8 +80,12 @@ function validateWebhookPayload(body: any): WebhookPayload | null {
   return body as WebhookPayload;
 }
 
+// Get region from environment variable or default to Europe North
+const deployRegion = process.env.FIREBASE_FUNCTIONS_REGION || 'us-central1';
+
 export const webhookSend = onRequest({
   cors: true,
+  region: deployRegion,
 }, async (req: Request, res: Response) => {
   try {
     // Only allow POST requests

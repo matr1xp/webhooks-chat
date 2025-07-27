@@ -6,8 +6,12 @@ import axios from 'axios';
 // Initialize CORS
 const corsHandler = cors({ origin: true });
 
+// Get region from environment variable or default to Europe North  
+const deployRegion = process.env.FIREBASE_FUNCTIONS_REGION || 'us-central1';
+
 export const healthCheck = onRequest({
   cors: true,
+  region: deployRegion,
 }, async (req: Request, res: Response) => {
   return corsHandler(req, res, async () => {
     if (req.method === 'GET') {
