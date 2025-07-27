@@ -22,7 +22,6 @@ import {
   X
 } from 'lucide-react';
 import { Modal } from './Modal';
-import { webhookClient } from '@/lib/webhook-client';
 
 interface FirebaseChatSidebarProps {
   className?: string;
@@ -45,6 +44,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
     activeWebhook,
     webhooks,
     setActiveWebhook,
+    checkWebhookHealth,
     
     // Chats
     chats,
@@ -67,23 +67,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
   const [isWebhookSelectorOpen, setIsWebhookSelectorOpen] = useState(false);
   const [openChatMenu, setOpenChatMenu] = useState<string | null>(null);
 
-  // Expose health check function for external calls
-  const checkWebhookHealth = useCallback(async (webhook?: any) => {
-    const targetWebhook = webhook || activeWebhook;
-    if (!targetWebhook) {
-      setIsOnline(false);
-      return false;
-    }
-
-    try {
-      const healthy = await webhookClient.checkHealth(targetWebhook);
-      setIsOnline(healthy);
-      return healthy;
-    } catch (error) {
-      setIsOnline(false);
-      return false;
-    }
-  }, [activeWebhook]);
+  // Use centralized health check from FirebaseContext to avoid circular dependency
 
   // Filter chats for active webhook - memoized to prevent unnecessary re-renders
   const chatsForActiveWebhook = useMemo(() => 
@@ -232,18 +216,21 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
     }
   }, [isWebhookSelectorOpen, openChatMenu]);
 
-  // Check webhook health only on initial load or when webhook changes
+  // Check webhook health using centralized system - no circular dependency
   useEffect(() => {
-    // Run health check when activeWebhook changes or on initial load
-    if (activeWebhook) {
+    if (activeWebhook?.id) {
       if (!isInitialized.current) {
         isInitialized.current = true;
       }
-      checkWebhookHealth();
+      
+      // Use centralized health check from FirebaseContext
+      checkWebhookHealth(activeWebhook)
+        .then(setIsOnline)
+        .catch(() => setIsOnline(false));
     } else {
       setIsOnline(false);
     }
-  }, [activeWebhook, checkWebhookHealth]);
+  }, [activeWebhook?.id, checkWebhookHealth]); // Only depend on webhook ID and stable context function
 
   return (
     <>
