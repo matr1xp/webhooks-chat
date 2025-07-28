@@ -1,36 +1,38 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useFirebase } from '@/contexts/FirebaseContext';
-import { cn } from '@/lib/utils';
-import Image from 'next/image';
-import { 
-  MessageSquare, 
-  Plus, 
-  Settings, 
-  ChevronLeft, 
+import {
+  ChevronLeft,
   ChevronRight,
-  MoreVertical,
-  Trash2,
   Edit3,
-  Webhook,
+  Eraser,
   Globe,
   LogOut,
+  MessageSquare,
+  MoreVertical,
+  Plus,
+  Settings,
+  Trash2,
   User,
-  Eraser,
+  Webhook,
   X
 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import Image from 'next/image';
 import { Modal } from './Modal';
+import { cn } from '@/lib/utils';
+import { useFirebase } from '@/contexts/FirebaseContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface FirebaseChatSidebarProps {
   className?: string;
   onConfigOpen?: () => void;
   isMobileOpen?: boolean;
   onMobileClose?: () => void;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
-export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = false, onMobileClose }: FirebaseChatSidebarProps) {
+export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = false, onMobileClose, onCollapsedChange }: FirebaseChatSidebarProps) {
   const { theme } = useTheme();
   const {
     // Auth
@@ -58,6 +60,11 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
 
 
   const [isCollapsed, setIsCollapsed] = useState(false);
+  
+  // Notify parent of initial collapsed state
+  useEffect(() => {
+    onCollapsedChange?.(isCollapsed);
+  }, [isCollapsed, onCollapsedChange]);
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [editingChat, setEditingChat] = useState<string | null>(null);
@@ -367,7 +374,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
 
                         {/* Dropdown Menu */}
                         {isWebhookSelectorOpen && (
-                          <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-lg z-[70] max-h-48 overflow-y-auto">
+                          <div className="absolute left-6 right-2 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg shadow-lg z-[70] max-h-48 overflow-y-auto min-w-0">
                             {webhooks.map((webhook) => (
                               <button
                                 key={webhook.id}
@@ -377,15 +384,15 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                                 }}
                                 className={cn(
                                   "w-full text-left px-3 py-2 text-xs transition-colors touch-manipulation",
-                                  "hover:bg-slate-100 dark:hover:bg-slate-700",
-                                  "active:bg-slate-200 dark:active:bg-slate-600",
+                                  "hover:!bg-[#e2e8f0] dark:hover:!bg-[#64748b]",
+                                  "hover:!text-[#374151] dark:hover:!text-[#f1f5f9]",
+                                  "active:!bg-[#cbd5e1] dark:active:!bg-[#475569]",
                                   "first:rounded-t-lg last:rounded-b-lg",
                                   "flex items-center",
-                                  webhook.id === activeWebhook?.id && "bg-blue-600 text-white"
+                                  webhook.id === activeWebhook?.id 
+                                    ? "bg-blue-600 text-white" 
+                                    : "text-[#374151] dark:text-[#e2e8f0]"
                                 )}
-                                style={{ 
-                                  color: webhook.id === activeWebhook?.id ? '#ffffff' : (theme === 'light' ? '#374151' : '#f1f5f9')
-                                }}
                               >
                                 <Webhook className="w-3 h-3 mr-2 flex-shrink-0" />
                                 <span className="truncate">{webhook.name}</span>
@@ -441,7 +448,11 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
               )}
               {/* Hide collapse button on mobile since we have close button */}
               <button
-                onClick={() => setIsCollapsed(!isCollapsed)}
+                onClick={() => {
+                  const newCollapsed = !isCollapsed;
+                  setIsCollapsed(newCollapsed);
+                  onCollapsedChange?.(newCollapsed);
+                }}
                 className={cn(
                   'p-2 rounded-lg transition-colors hover:bg-slate-200 dark:hover:bg-slate-800 hidden md:block'
                 )}

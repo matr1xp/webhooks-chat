@@ -17,6 +17,7 @@ import { WorkingFirebaseTest } from '@/components/debug/WorkingFirebaseTest';
 export default function Home() {
   const [showConfig, setShowConfig] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
   // Feature flag: Switch between Firebase and Redux
   const USE_FIREBASE = true; // Set to false to use Redux instead
@@ -52,6 +53,7 @@ export default function Home() {
           onConfigOpen={() => setShowConfig(true)}
           isMobileOpen={isMobileSidebarOpen}
           onMobileClose={() => setIsMobileSidebarOpen(false)}
+          onCollapsedChange={setIsSidebarCollapsed}
         />
       ) : (
         <ChatSidebar 
@@ -65,6 +67,8 @@ export default function Home() {
       <div className="flex-1 flex flex-col min-w-0">
         <ChatContainer 
           onMobileSidebarOpen={() => setIsMobileSidebarOpen(true)}
+          isSidebarCollapsed={isSidebarCollapsed}
+          isMobileSidebarOpen={isMobileSidebarOpen}
         />
       </div>
 

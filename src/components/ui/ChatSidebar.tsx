@@ -333,14 +333,15 @@ export function ChatSidebar({ className, onConfigOpen, isMobileOpen = false, onM
                                 }}
                                 className={cn(
                                   "w-full text-left px-3 py-2 text-xs transition-colors touch-manipulation",
-                                  "hover:bg-slate-700 dark:hover:bg-slate-700",
-                                  "active:bg-slate-600 dark:active:bg-slate-600",
+                                  "hover:bg-[#e2e8f0] dark:hover:bg-[#e2e8f0]",
+                                  "hover:text-[#374151] dark:hover:text-[#374151]",
+                                  "active:bg-[#cbd5e1] dark:active:bg-[#cbd5e1]",
                                   "first:rounded-t-lg last:rounded-b-lg",
                                   "flex items-center",
                                   webhook.id === activeWebhook?.id && "bg-blue-600 text-white"
                                 )}
                                 style={{ 
-                                  color: webhook.id === activeWebhook?.id ? '#ffffff' : '#f1f5f9'
+                                  color: webhook.id === activeWebhook?.id ? '#ffffff' : '#374151'
                                 }}
                               >
                                 <Webhook className="w-3 h-3 mr-2 flex-shrink-0" />

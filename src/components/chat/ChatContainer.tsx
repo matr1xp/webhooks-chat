@@ -19,9 +19,11 @@ import { useFileCache } from '@/hooks/useFileCache';
 interface ChatContainerProps {
   className?: string;
   onMobileSidebarOpen?: () => void;
+  isSidebarCollapsed?: boolean;
+  isMobileSidebarOpen?: boolean;
 }
 
-export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerProps) {
+export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollapsed = false, isMobileSidebarOpen = false }: ChatContainerProps) {
   const { theme } = useTheme();
   const { store } = useConfig();
   
@@ -81,6 +83,8 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
 
 
   const [userId] = useState(() => generateUserId());
+  const [isOnline, setIsOnline] = useState<boolean | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   
   // Redux file cache for persistent Base64 data storage
   const { cache: fileDataCache, setFileCacheData, cleanupCache } = useFileCache();
@@ -148,6 +152,54 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
     }
   }, [messages, cleanupCache]);
 
+  // Check webhook health when active webhook changes
+  useEffect(() => {
+    if (activeWebhook?.id) {
+      if (USE_FIREBASE) {
+        // Convert to FirestoreWebhook format for health check
+        const firestoreWebhook = {
+          id: activeWebhook.id,
+          name: activeWebhook.name,
+          url: activeWebhook.url,
+          secret: (activeWebhook as any).apiSecret || (activeWebhook as any).secret,
+          isActive: activeWebhook.isActive,
+          createdAt: (activeWebhook as any).createdAt
+        };
+        firebase.checkWebhookHealth(firestoreWebhook)
+          .then(setIsOnline)
+          .catch(() => setIsOnline(false));
+      } else {
+        // For Redux mode, you could implement similar health check here
+        setIsOnline(null);
+      }
+    } else {
+      setIsOnline(false);
+    }
+  }, [activeWebhook?.id, USE_FIREBASE, firebase]);
+
+  // Detect if we're on mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Determine if connection pill should be shown
+  const shouldShowConnectionPill = useMemo(() => {
+    if (!activeWebhook) return false;
+    
+    if (isMobile) {
+      // Mobile: show when sidebar overlay is not open
+      return !isMobileSidebarOpen;
+    } else {
+      // Desktop: show when sidebar is collapsed
+      return isSidebarCollapsed;
+    }
+  }, [activeWebhook, isMobile, isSidebarCollapsed, isMobileSidebarOpen]);
 
   const handleSendMessage = async (
     content: string, 
@@ -345,9 +397,39 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
               <h1 className="text-lg sm:text-xl font-bold truncate" style={{ color: theme === 'light' ? '#000000' : '#f1f5f9' }}>
                 {activeChat?.name || 'Select a Chat'}
               </h1>
-              <p className="text-xs sm:text-sm font-medium" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}>
-                {activeWebhook ? `${activeWebhook.name} • ${messages.length} messages` : 'No webhook configured'}
-              </p>
+              <div className="flex items-center space-x-2">
+                <p className="text-xs sm:text-sm font-medium" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}>
+                  {activeWebhook ? `${activeWebhook.name} • ${messages.length} messages` : 'No webhook configured'}
+                </p>
+                {/* Connection Status Pill - Show when sidebar is hidden/collapsed */}
+                {shouldShowConnectionPill && (
+                  <div className={cn(
+                    "flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all duration-300 flex-shrink-0",
+                    isOnline === true
+                      ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 shadow-emerald-200/50 dark:shadow-emerald-800/50 shadow-sm" 
+                      : isOnline === false
+                      ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 shadow-red-200/50 dark:shadow-red-800/50 shadow-sm"
+                      : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shadow-blue-200/50 dark:shadow-blue-800/50 shadow-sm"
+                  )}>
+                    {isOnline === true ? (
+                      <>
+                        <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse"></div>
+                        <span className="hidden sm:inline">Connected</span>
+                      </>
+                    ) : isOnline === false ? (
+                      <>
+                        <div className="w-1.5 h-1.5 bg-red-500 dark:bg-red-400 rounded-full"></div>
+                        <span className="hidden sm:inline">Offline</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-1.5 h-1.5 bg-blue-500 dark:bg-blue-400 rounded-full animate-spin"></div>
+                        <span className="hidden sm:inline">Checking</span>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             
             {/* Right side controls */}
