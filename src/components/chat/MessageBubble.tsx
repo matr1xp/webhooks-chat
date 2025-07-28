@@ -261,13 +261,13 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
           </div>
           
           <div className={cn(
-            'relative max-w-xs sm:max-w-sm px-4 py-3 rounded-2xl rounded-tr-md',
+            'relative max-w-[calc(100vw-8rem)] sm:max-w-sm md:max-w-md px-6 py-4 rounded-2xl rounded-tr-md',
             'text-white shadow-lg user-message',
             'transform transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5',
             getStatusColor()
           )}>
             {/* User message content */}
-            <div className="break-words">
+            <div className="break-words overflow-hidden">
               {message.type === 'text' && (
                 <p className="text-sm leading-relaxed">
                   {message.content && typeof message.content === 'string' ? message.content : '[Invalid content]'}
@@ -374,14 +374,14 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
           </div>
           
           <div className={cn(
-            'relative flex-1 px-4 py-3 rounded-2xl rounded-tl-md',
+            'relative flex-1 max-w-[calc(100vw-8rem)] sm:max-w-md md:max-w-lg px-6 py-4 rounded-2xl rounded-tl-md',
             'shadow-lg bot-message',
             'transform transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5',
             'backdrop-blur-sm',
             getStatusColor()
           )}>
             {/* Bot message content */}
-            <div className="break-words">
+            <div className="break-words overflow-hidden">
               {message.type === 'text' && (
                 <div className="text-sm markdown-content" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>
                   {message.content && typeof message.content === 'string' ? (
