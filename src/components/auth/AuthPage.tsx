@@ -68,7 +68,7 @@ export function AuthPage({ className }: AuthPageProps) {
               <div className="relative">
                 <Image
                   src="/logo.png"
-                  alt="WebhookIQ Logo"
+                  alt="ChatAI Logo"
                   width={64}
                   height={64}
                   className="rounded-2xl shadow-lg"
@@ -79,7 +79,7 @@ export function AuthPage({ className }: AuthPageProps) {
             </div>
             
             <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-[#475569] dark:text-[#e2e8f0]">
-              Welcome to WebhookIQ
+              Welcome to ChatAI
             </h1>
             
             <p className="text-sm sm:text-base" style={{ 

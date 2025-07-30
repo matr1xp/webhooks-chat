@@ -159,9 +159,27 @@
     @apply bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900;
   }
   
+  /* Theme-aware chat input area */
+  .light .chat-input-area {
+    @apply bg-white;
+  }
+  
+  .dark .chat-input-area {
+    @apply bg-slate-800;
+  }
+  
+  /* Theme-aware chat footer */
+  .light .chat-footer {
+    @apply bg-slate-100 border border-slate-200;
+  }
+  
+  .dark .chat-footer {
+    @apply bg-slate-800 border border-slate-700;
+  }
+  
   /* Theme-aware header */
   .light .chat-header {
-    @apply backdrop-blur-xl bg-white/80 border-white/20;
+    @apply bg-white;
   }
   
   /* Mobile safe area support for fixed header */
@@ -242,7 +260,7 @@
   }
   
   .dark .chat-header {
-    @apply backdrop-blur-xl bg-slate-800/80 border-slate-700/40;
+    @apply bg-slate-800;
   }
   
   .dark .chat-header h1 {
@@ -266,13 +284,17 @@
   
   /* Theme-aware input */
   .light .chat-input {
-    @apply bg-white/90 border-slate-200/60 text-slate-900;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-color: rgba(226, 232, 240, 0.6);
+    color: #0f172a;
     font-family: 'Gail Rock', sans-serif;
     font-weight: 500; /* Medium */
   }
   
   .dark .chat-input {
-    @apply bg-slate-800/90 border-slate-600/60 text-slate-100;
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f1f5f9;
     font-family: 'Gail Rock', sans-serif;
     font-weight: 500; /* Medium */
   }
@@ -556,4 +578,127 @@
 
 .btn-modern:hover::before {
   left: 100%;
+}
+
+/* Welcome Screen Styles */
+.welcome-screen {
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.welcome-screen .owl-mascot {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Suggestion Card Styles */
+.suggestion-card {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateZ(0);
+  will-change: transform, box-shadow;
+}
+
+.suggestion-card:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
+
+.suggestion-card:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* User Profile Dropdown Animation */
+.user-profile-dropdown {
+  animation: slideDown 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Enhanced Sidebar Styles */
+.sidebar-bottom-actions {
+  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.02));
+}
+
+.dark .sidebar-bottom-actions {
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.02));
+}
+
+/* Upgrade Button Special Styling */
+.upgrade-button {
+  background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+  box-shadow: 0 4px 15px -2px rgba(139, 92, 246, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.upgrade-button:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+  box-shadow: 0 6px 20px -2px rgba(139, 92, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.upgrade-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Header Action Icons */
+.header-action {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.header-action:hover {
+  transform: scale(1.05);
+}
+
+.header-action:active {
+  transform: scale(0.95);
+}
+
+/* Responsive Design Enhancements */
+@media (max-width: 768px) {
+  .welcome-screen {
+    padding: 1rem;
+  }
+  
+  .suggestion-card {
+    min-height: 60px;
+    font-size: 0.875rem;
+  }
+  
+  .user-profile-dropdown {
+    position: fixed;
+    right: 1rem;
+    top: 4rem;
+    z-index: 60;
+  }
+}
+
+/* Animation for suggestion cards appearing */
+.suggestion-card:nth-child(1) { animation-delay: 0.1s; }
+.suggestion-card:nth-child(2) { animation-delay: 0.2s; }
+.suggestion-card:nth-child(3) { animation-delay: 0.3s; }
+.suggestion-card:nth-child(4) { animation-delay: 0.4s; }
+.suggestion-card:nth-child(5) { animation-delay: 0.5s; }
+.suggestion-card:nth-child(6) { animation-delay: 0.6s; }
+
+/* Stagger animation for grid */
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.suggestion-card {
+  animation: slideInFromBottom 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
 }

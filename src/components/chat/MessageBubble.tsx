@@ -4,8 +4,9 @@ import { Message } from '@/types/chat';
 import { formatTimestamp, cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useFirebase } from '@/contexts/FirebaseContext';
+import { useUserPhotoCache } from '@/hooks/useUserPhotoCache';
 import { Check, CheckCheck, X, Clock, User, Trash2, Loader2, Copy } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -20,11 +21,33 @@ interface MessageBubbleProps {
 export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBubbleProps) {
   const { theme } = useTheme();
   const { user, deleteMessage, deleteBotReply } = useFirebase();
+  const { getCachedPhoto } = useUserPhotoCache();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [cachedUserAvatar, setCachedUserAvatar] = useState<string | undefined>();
+  
   // Determine if this is a user message (default to true if not explicitly set)
   const actualIsUser = isUser !== undefined ? isUser : !message.isBot;
+
+  // Load and cache user photo when user data changes
+  useEffect(() => {
+    const loadUserPhoto = async () => {
+      if (user?.photoURL && user?.uid && actualIsUser) {
+        try {
+          const cached = await getCachedPhoto(user.uid, user.photoURL);
+          setCachedUserAvatar(cached);
+        } catch (error) {
+          console.warn('Failed to load cached photo in MessageBubble:', error);
+          setCachedUserAvatar(user.photoURL); // Fallback to original URL
+        }
+      } else {
+        setCachedUserAvatar(undefined);
+      }
+    };
+
+    loadUserPhoto();
+  }, [user?.photoURL, user?.uid, getCachedPhoto, actualIsUser]);
 
   // Function to preprocess LaTeX expressions
   const preprocessLatex = (content: string): string => {
@@ -341,15 +364,15 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
           <div className="relative flex-shrink-0">
             <div className={cn(
               "w-9 h-9 rounded-full flex items-center justify-center shadow-lg ring-2 ring-white ring-opacity-20",
-              user?.photoURL && !user.isAnonymous 
+              cachedUserAvatar && !user?.isAnonymous 
                 ? "border-2 border-emerald-400" 
                 : "bg-gradient-to-br from-emerald-400 to-emerald-600"
             )}>
-              {user?.photoURL && !user.isAnonymous ? (
+              {cachedUserAvatar && !user?.isAnonymous ? (
                 <img
-                  src={user.photoURL}
-                  alt={user.displayName || 'User'}
-                  className="w-9 h-9 rounded-full"
+                  src={cachedUserAvatar}
+                  alt={user?.displayName || 'User'}
+                  className="w-9 h-9 rounded-full object-cover"
                 />
               ) : user?.isAnonymous ? (
                 <span className="text-white text-sm font-medium">👤</span>

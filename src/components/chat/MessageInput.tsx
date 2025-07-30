@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useRef, KeyboardEvent, useEffect, useCallback } from 'react';
-import { Send, Paperclip, Loader2 } from 'lucide-react';
-import { useTheme } from '@/contexts/ThemeContext';
-import { cn } from '@/lib/utils';
-import { Modal } from '@/components/ui/Modal';
+import { KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { Loader2, Paperclip, Send, Webhook } from 'lucide-react';
+
 import { FileUpload } from '@/components/ui/FileUpload';
+import { Modal } from '@/components/ui/Modal';
+import { cn } from '@/lib/utils';
+import { useFirebase } from '@/contexts/FirebaseContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface FileData {
   name: string;
@@ -30,9 +32,11 @@ export function MessageInput({
   autoFocus = false
 }: MessageInputProps) {
   const { theme } = useTheme();
+  const { activeWebhook, checkWebhookHealth } = useFirebase();
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showFileUpload, setShowFileUpload] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 
@@ -70,6 +74,17 @@ export function MessageInput({
       return () => clearTimeout(timeoutId);
     }
   }, [autoFocus, disabled]);
+
+  // Check webhook health for status display
+  useEffect(() => {
+    if (activeWebhook?.id) {
+      checkWebhookHealth(activeWebhook)
+        .then(setIsOnline)
+        .catch(() => setIsOnline(false));
+    } else {
+      setIsOnline(false);
+    }
+  }, [activeWebhook?.id, checkWebhookHealth]);
 
   const handleSubmit = useCallback(async () => {
     if (!message.trim() || disabled || isSubmitting) return;
@@ -156,9 +171,9 @@ export function MessageInput({
 
   return (
     <div className={cn(
-      'p-4 sm:p-6',
-      // Mobile keyboard handling
-      'pb-[env(safe-area-inset-bottom)]',
+      'p-3 md:p-4 lg:p-6 chat-input-area',
+      // Mobile safe area and keyboard handling
+      'pb-[max(env(safe-area-inset-bottom),1rem)]',
       className
     )}>
       <div className="max-w-4xl mx-auto">
@@ -221,9 +236,45 @@ export function MessageInput({
           </div>
         </div>
         
-        {/* Helper text - modernized, hidden on mobile */}
-        <div className="mt-3 flex items-center justify-center hidden md:flex">
-          <div className="px-3 py-1 rounded-full bg-slate-100/80 dark:bg-slate-700/80 backdrop-blur-sm">
+        {/* Helper text and webhook status - modernized, responsive layout */}
+        <div id="fix-me" className="mt-3 flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0 chat-footer px-3 py-2 rounded-lg">
+          {/* Webhook status - centered on mobile, left on desktop */}
+          {activeWebhook && (
+            <div className="flex items-center justify-center md:justify-start space-x-2 px-3 py-1 rounded-full bg-slate-100/80 dark:bg-slate-700/80 backdrop-blur-sm">
+              <Webhook className="w-3 h-3 flex-shrink-0" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
+              <span className="text-xs text-slate-600 dark:text-slate-400 font-medium truncate max-w-32">
+                {activeWebhook.name}
+              </span>
+              <div className={cn(
+                "flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all duration-300 flex-shrink-0",
+                isOnline === true
+                  ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 shadow-emerald-200/50 dark:shadow-emerald-800/50 shadow-sm" 
+                  : isOnline === false
+                  ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 shadow-red-200/50 dark:shadow-red-800/50 shadow-sm"
+                  : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shadow-blue-200/50 dark:shadow-blue-800/50 shadow-sm"
+              )}>
+                {isOnline === true ? (
+                  <>
+                    <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse"></div>
+                    <span>Connected</span>
+                  </>
+                ) : isOnline === false ? (
+                  <>
+                    <div className="w-1.5 h-1.5 bg-red-500 dark:bg-red-400 rounded-full"></div>
+                    <span>Offline</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-1.5 h-1.5 bg-blue-500 dark:bg-blue-400 rounded-full animate-spin"></div>
+                    <span>Checking</span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* Keyboard shortcuts - Hidden on mobile, shown on desktop */}
+          <div className="hidden md:block px-3 py-1 rounded-full bg-slate-100/80 dark:bg-slate-700/80 backdrop-blur-sm">
             <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
               Press <kbd className="px-1.5 py-0.5 text-xs font-mono bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300">Enter</kbd> to send, 
               <kbd className="px-1.5 py-0.5 text-xs font-mono bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 ml-1">Shift+Enter</kbd> for new line

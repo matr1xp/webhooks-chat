@@ -3,7 +3,9 @@
 import { useEffect, useState, useMemo } from 'react';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
+import { WelcomeScreen } from './WelcomeScreen';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { UserProfileDropdown } from '@/components/ui/UserProfileDropdown';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useChatStore } from '@/hooks/useReduxChat';
@@ -13,7 +15,7 @@ import { webhookClient } from '@/lib/webhook-client';
 import { WebhookPayload } from '@/types/chat';
 import { generateSessionId, generateUserId, sanitizeInput } from '@/lib/utils';
 import { cn } from '@/lib/utils';
-import { AlertCircle, Wifi, WifiOff, RefreshCw, Menu } from 'lucide-react';
+import { AlertCircle, Search, Share, Bell, Menu } from 'lucide-react';
 import { useFileCache } from '@/hooks/useFileCache';
 
 interface ChatContainerProps {
@@ -201,19 +203,60 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
     }
   }, [activeWebhook, isMobile, isSidebarCollapsed, isMobileSidebarOpen]);
 
+  // Determine if we should show welcome screen
+  const shouldShowWelcomeScreen = useMemo(() => {
+    return !activeChat || messages.length === 0;
+  }, [activeChat, messages.length]);
+
+  // Mock header action handlers
+  const handleSearchClick = () => {
+    console.log('Search clicked');
+  };
+
+  const handleShareClick = () => {
+    console.log('Share clicked');
+  };
+
+  const handleNotificationsClick = () => {
+    console.log('Notifications clicked');
+  };
+
   const handleSendMessage = async (
     content: string, 
     type: 'text' | 'file' | 'image' = 'text',
     fileData?: { name: string; size: number; type: string; data: string }
   ) => {
-    // Check if we have an active webhook and chat
-    if (!activeWebhook || !activeChat) {
-      setError('No active webhook or chat configured. Please configure a webhook and select a chat.');
+    // Check if we have an active webhook
+    if (!activeWebhook) {
+      setError('No active webhook configured. Please configure a webhook first.');
+      return;
+    }
+
+    // Auto-create a new chat if none is selected (for welcome screen suggestions)
+    let currentChat = activeChat;
+    if (!currentChat && USE_FIREBASE) {
+      try {
+        setError(null);
+        const newChat = await firebase.createNewChat(
+          activeWebhook.id, 
+          generateChatName(content)
+        );
+        firebase.setActiveChat(newChat.id);
+        currentChat = newChat;
+      } catch (error) {
+        setError('Failed to create new chat. Please try again.');
+        return;
+      }
+    }
+
+    // Check if we now have an active chat
+    if (!currentChat) {
+      setError('No active chat configured. Please select or create a chat.');
       return;
     }
     
     // Additional validation for Firebase mode
-    if (USE_FIREBASE && (!activeChat.id || activeChat.id.trim() === '')) {
+    if (USE_FIREBASE && (!currentChat.id || currentChat.id.trim() === '')) {
       setError('Active chat has invalid ID. Please refresh and try again.');
       return;
     }
@@ -229,7 +272,7 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
       }
 
       // Add message to local state immediately (optimistic update)
-      const sessionId = USE_FIREBASE ? activeChat.id : (activeChat as any).sessionId;
+      const sessionId = USE_FIREBASE ? currentChat.id : (currentChat as any).sessionId;
       
       // Create message payload for Firestore (without large Base64 data)
       const messagePayload = {
@@ -260,15 +303,15 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
       }
 
       // Auto-rename chat if this is the first user message
-      if (USE_FIREBASE && activeChat && type === 'text') {
+      if (USE_FIREBASE && currentChat && type === 'text') {
         // Check if this is the first user message by counting existing user messages
         const userMessages = messages.filter(msg => !msg.isBot);
         
         // If no user messages existed before this one, and the chat has a default name, rename it
-        if (userMessages.length === 0 && activeChat.name && activeChat.name.startsWith('Chat ')) {
+        if (userMessages.length === 0 && currentChat.name && currentChat.name.startsWith('Chat ')) {
           try {
             const newChatName = generateChatName(sanitizedContent);
-            await firebase.updateChat(activeChat.id, newChatName);
+            await firebase.updateChat(currentChat.id, newChatName);
           } catch (error) {
             console.warn('Failed to auto-rename chat:', error);
             // Don't block the message sending if renaming fails
@@ -368,23 +411,20 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
   try {
     return (
     <div className={cn(
-      'h-screen w-full flex flex-col relative overflow-hidden chat-container',
-      // Mobile optimizations
-      'touch-manipulation',
+      'h-screen w-full flex flex-col relative chat-container',
+      // Mobile: allow overflow for fixed input, desktop: hidden overflow
+      'overflow-visible md:overflow-hidden',
       className
     )}>
-      {/* Subtle background pattern */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDEyNywgMTI3LCAxMjcsIDAuMDMpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-40 dark:opacity-20"></div>
-      
-      {/* Header - Modern glassmorphism design, fixed on mobile */}
-      <div className="flex-shrink-0 border-b shadow-sm z-30 relative chat-header chat-header-top">
-        <div className="p-4 sm:p-6">
+      {/* Header - Mobile-optimized design */}
+      <div className="flex-shrink-0 border-b border-[#e2e8f0] dark:border-[#374151] chat-header z-30 relative">
+        <div className="p-3 md:p-4 lg:p-6">
           <div className="flex items-center justify-between">
             {/* Mobile Sidebar Button */}
             <button
               onClick={onMobileSidebarOpen}
               className={cn(
-                'p-2 rounded-lg transition-colors touch-manipulation md:hidden mr-3',
+                'p-2 rounded-lg transition-colors touch-manipulation md:hidden mr-2',
                 'hover:bg-slate-100 dark:hover:bg-slate-800',
                 'active:scale-95 active:bg-slate-200 dark:active:bg-slate-700'
               )}
@@ -394,48 +434,60 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
             </button>
 
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg sm:text-xl font-bold truncate" style={{ color: theme === 'light' ? '#000000' : '#f1f5f9' }}>
-                {activeChat?.name || 'Select a Chat'}
+              <h1 className="text-base md:text-lg lg:text-xl font-bold truncate" style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}>
+                {activeChat?.name || 'Conversation title goes here'}
               </h1>
-              <div className="flex items-center space-x-2">
-                <p className="text-xs sm:text-sm font-medium" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}>
-                  {activeWebhook ? `${activeWebhook.name} • ${messages.length} messages` : 'No webhook configured'}
-                </p>
-                {/* Connection Status Pill - Show when sidebar is hidden/collapsed */}
-                {shouldShowConnectionPill && (
-                  <div className={cn(
-                    "flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all duration-300 flex-shrink-0",
-                    isOnline === true
-                      ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 shadow-emerald-200/50 dark:shadow-emerald-800/50 shadow-sm" 
-                      : isOnline === false
-                      ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 shadow-red-200/50 dark:shadow-red-800/50 shadow-sm"
-                      : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shadow-blue-200/50 dark:shadow-blue-800/50 shadow-sm"
-                  )}>
-                    {isOnline === true ? (
-                      <>
-                        <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse"></div>
-                        <span className="hidden sm:inline">Connected</span>
-                      </>
-                    ) : isOnline === false ? (
-                      <>
-                        <div className="w-1.5 h-1.5 bg-red-500 dark:bg-red-400 rounded-full"></div>
-                        <span className="hidden sm:inline">Offline</span>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-1.5 h-1.5 bg-blue-500 dark:bg-blue-400 rounded-full animate-spin"></div>
-                        <span className="hidden sm:inline">Checking</span>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
+              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5 hidden sm:block">
+                {activeChat && messages.length > 0 
+                  ? `Started ${new Date().toLocaleDateString()}`
+                  : 'Select a chat or start a new conversation'
+                }
+              </p>
             </div>
             
-            {/* Right side controls */}
-            <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
-              {/* Theme Toggle */}
-              <ThemeToggle />
+            {/* Header Actions - Right side - Hide most on mobile */}
+            <div className="flex items-center space-x-1 md:space-x-2 lg:space-x-3 flex-shrink-0">
+              {/* Mock Action Icons - Hidden on mobile except user profile */}
+              <button
+                onClick={handleSearchClick}
+                className={cn(
+                  'p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800',
+                  'active:scale-95 touch-manipulation hidden md:block'
+                )}
+                title="Search"
+              >
+                <Search className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+              </button>
+              
+              <button
+                onClick={handleShareClick}
+                className={cn(
+                  'p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800',
+                  'active:scale-95 touch-manipulation hidden md:block'
+                )}
+                title="Share"
+              >
+                <Share className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+              </button>
+              
+              <button
+                onClick={handleNotificationsClick}
+                className={cn(
+                  'p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800',
+                  'active:scale-95 touch-manipulation hidden md:block'
+                )}
+                title="Notifications"
+              >
+                <Bell className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+              </button>
+
+              {/* Theme Toggle - Hidden on mobile */}
+              <div className="hidden md:block">
+                <ThemeToggle />
+              </div>
+              
+              {/* User Profile Dropdown - Always visible but simplified on mobile */}
+              <UserProfileDropdown />
             </div>
           </div>
         </div>
@@ -463,32 +515,46 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
         </div>
       )}
 
-      {/* Scrollable Messages Area with improved styling, accounting for fixed header and input on mobile */}
+      {/* Main Content Area - Welcome Screen or Messages */}
       <div className={cn(
         "flex-1 overflow-y-auto scrollbar-thin relative z-10 chat-messages-area",
-        "pt-20 md:pt-0 pb-24 md:pb-0", // Account for fixed header and input on mobile
-        error && "pt-32 md:pt-0" // Additional padding when error banner is shown
+        // Mobile: leave space for fixed input at bottom
+        "pb-24 md:pb-0",
+        error && "pt-8" // Additional padding when error banner is shown
       )}>
-        <MessageList 
-          messages={messages} 
-          isLoading={isLoading}
-          className="min-h-full px-4 py-6"
-          fileDataCache={fileDataCache}
-        />
+        {shouldShowWelcomeScreen ? (
+          <WelcomeScreen 
+            onSuggestionClick={handleSendMessage}
+            className="min-h-full"
+          />
+        ) : (
+          <MessageList 
+            messages={messages} 
+            isLoading={isLoading}
+            className="min-h-full px-4 py-6"
+            fileDataCache={fileDataCache}
+          />
+        )}
       </div>
 
-      {/* Input - Modern floating design */}
-      <div className="flex-shrink-0 z-20 relative">
-        <div className="backdrop-blur-xl border-t shadow-lg chat-input-container">
+      {/* Input - Fixed at bottom on mobile, normal position on desktop */}
+      <div className={cn(
+        "z-20 flex-shrink-0",
+        // Mobile: fixed at bottom with full width
+        "fixed bottom-0 left-0 right-0",
+        // Desktop: relative positioning (normal flex item)
+        "md:relative md:bottom-auto md:left-auto md:right-auto"
+      )}>
+        <div className="border-t border-[#e2e8f0] dark:border-[#374151] bg-[#ffffff] dark:bg-[#1e293b]">
           <MessageInput
             onSendMessage={handleSendMessage}
-            disabled={isLoading || !activeWebhook || !activeChat}
-            autoFocus={shouldAutoFocus}
+            disabled={isLoading || !activeWebhook}
+            autoFocus={shouldAutoFocus && !shouldShowWelcomeScreen}
             placeholder={
               !activeWebhook 
                 ? "Configure a webhook to start chatting..." 
-                : !activeChat 
-                  ? "Select or create a chat..." 
+                : shouldShowWelcomeScreen
+                  ? "Type your message here or pick from the prompts"
                   : isLoading 
                     ? "Sending..." 
                     : "Type a message..."

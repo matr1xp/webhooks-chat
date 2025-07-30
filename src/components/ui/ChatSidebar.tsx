@@ -223,7 +223,7 @@ export function ChatSidebar({ className, onConfigOpen, isMobileOpen = false, onM
                     style={{ width: 'auto', height: '24px' }}
                   />
                   <h2 className="text-lg font-semibold truncate" style={{ color: '#f1f5f9' }}>
-                    WebhookIQ
+                    ChatAI
                   </h2>
                 </div>
                 {/* Webhook Selector in Header */}
