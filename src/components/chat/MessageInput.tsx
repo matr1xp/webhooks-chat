@@ -183,13 +183,16 @@ export function MessageInput({
             onClick={() => setShowFileUpload(true)}
             disabled={disabled || isSubmitting}
             className={cn(
-              'flex-shrink-0 w-11 h-11 rounded-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/60 dark:border-slate-600/60 hover:bg-white dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-500 transition-all duration-200 touch-manipulation shadow-sm hover:shadow-md',
+              'flex-shrink-0 w-11 h-11 rounded-xl backdrop-blur-sm transition-all duration-200 touch-manipulation shadow-sm hover:shadow-md',
               'flex items-center justify-center group',
+              theme === 'light'
+                ? 'bg-white/90 border border-slate-200/80 hover:bg-white hover:border-slate-300'
+                : 'bg-slate-800/90 border border-slate-600/80 hover:bg-slate-700 hover:border-slate-500',
               (disabled || isSubmitting) && 'opacity-50 cursor-not-allowed'
             )}
             aria-label="Attach file"
           >
-            <Paperclip className="w-5 h-5 text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors" />
+            <Paperclip className="w-5 h-5 text-slate-600 dark:text-slate-400 group-hover:text-slate-200 dark:group-hover:text-slate-200 transition-colors" />
           </button>
 
           {/* Message input container */}
@@ -204,7 +207,7 @@ export function MessageInput({
                 disabled={disabled || isSubmitting}
                 autoFocus={autoFocus && !disabled}
                 className={cn(
-                  'w-full min-h-[48px] sm:min-h-[52px] max-h-[120px] px-4 py-3 pr-14 sm:pr-16 rounded-2xl bg-transparent text-sm resize-none focus:outline-none leading-relaxed touch-manipulation',
+                  'w-full min-h-[48px] sm:min-h-[52px] max-h-[120px] px-4 py-3 rounded-2xl bg-transparent text-sm resize-none focus:outline-none leading-relaxed touch-manipulation',
                   (disabled || isSubmitting) && 'opacity-50 cursor-not-allowed'
                 )}
                 style={{ 
@@ -213,36 +216,49 @@ export function MessageInput({
                 } as React.CSSProperties & { '--placeholder-color': string }}
                 rows={1}
               />
-              
-              {/* Send button */}
-              <button
-                onClick={handleSubmit}
-                disabled={!message.trim() || disabled || isSubmitting}
-                className={cn(
-                  'absolute right-2 bottom-2 w-8 h-8 sm:w-9 sm:h-9 rounded-xl transition-all duration-200 touch-manipulation flex items-center justify-center group',
-                  message.trim() && !disabled && !isSubmitting
-                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 dark:from-indigo-500 dark:to-purple-600 text-white hover:from-blue-600 hover:to-blue-700 dark:hover:from-indigo-600 dark:hover:to-purple-700 shadow-lg shadow-blue-500/25 dark:shadow-indigo-500/25 hover:shadow-xl hover:shadow-blue-500/30 dark:hover:shadow-indigo-500/30 hover:scale-105 active:scale-95'
-                    : 'bg-slate-200 dark:bg-slate-600 text-slate-400 dark:text-slate-500 cursor-not-allowed'
-                )}
-                aria-label="Send message"
-              >
-                {isSubmitting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                )}
-              </button>
             </div>
           </div>
+
+          {/* Send button */}
+          <button
+            onClick={handleSubmit}
+            disabled={!message.trim() || disabled || isSubmitting}
+            className={cn(
+              'flex-shrink-0 w-11 h-11 rounded-xl backdrop-blur-sm transition-all duration-200 touch-manipulation shadow-sm hover:shadow-md',
+              'flex items-center justify-center group',
+              theme === 'light'
+                ? 'bg-white/90 border border-slate-200/80 hover:bg-white hover:border-slate-300'
+                : 'bg-slate-800/90 border border-slate-600/80 hover:bg-slate-700 hover:border-slate-500',
+              (disabled || isSubmitting) && 'opacity-50 cursor-not-allowed'
+            )}
+            aria-label="Send message"
+          >
+            {isSubmitting ? (
+              <Loader2 className="w-5 h-5 animate-spin text-slate-600 dark:text-slate-400 group-hover:text-slate-200 dark:group-hover:text-slate-200 transition-colors" />
+            ) : (
+              <Send className="w-5 h-5 text-slate-600 dark:text-slate-400 group-hover:text-slate-200 dark:group-hover:text-slate-200 transition-colors" />
+            )}
+          </button>
         </div>
         
         {/* Helper text and webhook status - modernized, responsive layout */}
         <div id="fix-me" className="mt-3 flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0 chat-footer px-3 py-2 rounded-lg">
           {/* Webhook status - centered on mobile, left on desktop */}
           {activeWebhook && (
-            <div className="flex items-center justify-center md:justify-start space-x-2 px-3 py-1 rounded-full bg-slate-100/80 dark:bg-slate-700/80 backdrop-blur-sm">
-              <Webhook className="w-3 h-3 flex-shrink-0" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
-              <span className="text-xs text-slate-600 dark:text-slate-400 font-medium truncate max-w-32">
+            <div className={cn(
+              "flex items-center justify-center space-x-2 px-3 py-1 rounded-full backdrop-blur-sm",
+              theme === 'light' 
+                ? 'bg-white/90' 
+                : 'bg-slate-800/90'
+            )}>
+              <Webhook className={cn(
+                "w-3 h-3 flex-shrink-0",
+                theme === 'light' ? 'text-slate-600' : 'text-slate-400'
+              )} />
+              <span className={cn(
+                "text-xs font-medium truncate max-w-32",
+                theme === 'light' ? 'text-slate-700' : 'text-slate-300'
+              )}>
                 {activeWebhook.name}
               </span>
               <div className={cn(
@@ -274,10 +290,28 @@ export function MessageInput({
           )}
           
           {/* Keyboard shortcuts - Hidden on mobile, shown on desktop */}
-          <div className="hidden md:block px-3 py-1 rounded-full bg-slate-100/80 dark:bg-slate-700/80 backdrop-blur-sm">
-            <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-              Press <kbd className="px-1.5 py-0.5 text-xs font-mono bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300">Enter</kbd> to send, 
-              <kbd className="px-1.5 py-0.5 text-xs font-mono bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 ml-1">Shift+Enter</kbd> for new line
+          <div className={cn(
+            "hidden md:block px-3 py-1 rounded-full backdrop-blur-sm",
+            theme === 'light' 
+              ? 'bg-white/90 border border-slate-200/80' 
+              : 'bg-slate-800/90 border border-slate-600/80'
+          )}>
+            <span className={cn(
+              "text-xs font-medium",
+              theme === 'light' ? 'text-slate-700' : 'text-slate-300'
+            )}>
+              Press <kbd className={cn(
+                "px-1.5 py-0.5 text-xs font-mono rounded border",
+                theme === 'light' 
+                  ? 'bg-white border-slate-200 text-slate-700' 
+                  : 'bg-slate-800 border-slate-600 text-slate-300'
+              )}>Enter</kbd> to send, 
+              <kbd className={cn(
+                "px-1.5 py-0.5 text-xs font-mono rounded border ml-1",
+                theme === 'light' 
+                  ? 'bg-white border-slate-200 text-slate-700' 
+                  : 'bg-slate-800 border-slate-600 text-slate-300'
+              )}>Shift+Enter</kbd> for new line
             </span>
           </div>
         </div>

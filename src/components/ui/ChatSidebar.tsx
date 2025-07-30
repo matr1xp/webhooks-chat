@@ -1,27 +1,28 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Edit3,
+  Globe,
+  MessageSquare,
+  MoreVertical,
+  Plus,
+  Settings,
+  Trash2,
+  Webhook
+} from 'lucide-react';
+import { selectActiveChat, selectActiveWebhook, selectChatsForWebhook } from '@/store/configSelectors';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import Image from 'next/image';
+import { Modal } from './Modal';
+import { cn } from '@/lib/utils';
 import { useConfig } from '@/contexts/ConfigContext';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useFirebase } from '@/contexts/FirebaseContext';
 import { useSelector } from 'react-redux';
-import { selectActiveWebhook, selectActiveChat, selectChatsForWebhook } from '@/store/configSelectors';
-import { cn } from '@/lib/utils';
-import Image from 'next/image';
-import { 
-  MessageSquare, 
-  Plus, 
-  Settings, 
-  ChevronLeft, 
-  ChevronRight,
-  MoreVertical,
-  Trash2,
-  Edit3,
-  Webhook,
-  Globe,
-  X
-} from 'lucide-react';
-import { Modal } from './Modal';
+import { useTheme } from '@/contexts/ThemeContext';
+import { ThemeToggle } from './ThemeToggle';
 import { webhookClient } from '@/lib/webhook-client';
 
 interface ChatSidebarProps {
@@ -43,6 +44,12 @@ export function ChatSidebar({ className, onConfigOpen, isMobileOpen = false, onM
   const isInitialized = useRef(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [isWebhookSelectorOpen, setIsWebhookSelectorOpen] = useState(false);
+  
+  // Swipe handling state
+  const [swipeStartX, setSwipeStartX] = useState<number | null>(null);
+  const [swipeCurrentX, setSwipeCurrentX] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   // Feature flag: Switch between Firebase and Redux
   const USE_FIREBASE = true; // Set to false to use Redux instead
@@ -186,6 +193,41 @@ export function ChatSidebar({ className, onConfigOpen, isMobileOpen = false, onM
     return `${Math.floor(diffInMinutes / 1440)}d`;
   };
 
+  // Swipe handling functions
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!isMobileOpen) return;
+    const touch = e.touches[0];
+    setSwipeStartX(touch.clientX);
+    setSwipeCurrentX(touch.clientX);
+    setIsDragging(true);
+  }, [isMobileOpen]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDragging || swipeStartX === null) return;
+    const touch = e.touches[0];
+    setSwipeCurrentX(touch.clientX);
+  }, [isDragging, swipeStartX]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!isDragging || swipeStartX === null || swipeCurrentX === null) {
+      setIsDragging(false);
+      setSwipeStartX(null);
+      setSwipeCurrentX(null);
+      return;
+    }
+
+    const swipeDistance = swipeCurrentX - swipeStartX;
+    const swipeThreshold = -100; // Swipe left 100px to close
+
+    if (swipeDistance < swipeThreshold && onMobileClose) {
+      onMobileClose();
+    }
+
+    setIsDragging(false);
+    setSwipeStartX(null);
+    setSwipeCurrentX(null);
+  }, [isDragging, swipeStartX, swipeCurrentX, onMobileClose]);
+
   return (
     <>
       {/* Mobile Backdrop Overlay */}
@@ -196,20 +238,32 @@ export function ChatSidebar({ className, onConfigOpen, isMobileOpen = false, onM
         />
       )}
 
-      <div className={cn(
-        'flex flex-col h-full transition-all duration-300 border-r shadow-lg relative',
-        'bg-slate-800 dark:bg-slate-900 backdrop-blur-xl',
-        'border-slate-700 dark:border-slate-700',
-        // Desktop: Normal sidebar behavior OR Mobile when open
-        isMobileOpen ? 'fixed inset-y-0 left-0 z-50 w-80 flex' : 'hidden md:flex',
-        // Desktop width when not mobile
-        !isMobileOpen && (isCollapsed ? 'w-16' : 'w-80'),
-        // Mobile is always full width (w-80)
-        isMobileOpen && 'w-80',
-        className
-      )}>
+      <div 
+        ref={sidebarRef}
+        className={cn(
+          'flex flex-col h-full transition-all duration-300 border-r shadow-lg relative',
+          'bg-slate-800 dark:bg-slate-900 backdrop-blur-xl',
+          'border-slate-700 dark:border-slate-700',
+          // Desktop: Normal sidebar behavior OR Mobile when open
+          isMobileOpen ? 'fixed left-0 top-0 bottom-0 z-50 w-96 flex' : 'hidden md:flex',
+          // Desktop width when not mobile
+          !isMobileOpen && (isCollapsed ? 'w-16' : 'w-80'),
+          // Mobile is always 96 width (wider for better usability)
+          isMobileOpen && 'w-96',
+          className
+        )}
+        style={{
+          // Apply swipe transform on mobile
+          transform: isMobileOpen && isDragging && swipeStartX !== null && swipeCurrentX !== null 
+            ? `translateX(${Math.min(0, swipeCurrentX - swipeStartX)}px)` 
+            : undefined
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* Header */}
-        <div className="flex-shrink-0 p-4 border-b border-slate-700 dark:border-slate-700">
+        <div className="flex-shrink-0 p-4 border-slate-700 dark:border-slate-700">
           <div className="flex items-center justify-between">
             {!isCollapsed && (
               <div className="flex-1 min-w-0">
@@ -448,7 +502,7 @@ export function ChatSidebar({ className, onConfigOpen, isMobileOpen = false, onM
             <div
               key={chat.id}
               className={cn(
-                'relative group cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-b-0',
+                'relative group cursor-pointer border-slate-100 dark:border-slate-800 last:border-b-0',
                 'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors touch-manipulation',
                 'active:bg-slate-100 dark:active:bg-slate-700/50',
                 'md:hover:bg-slate-50 md:dark:hover:bg-slate-800/50',
@@ -584,23 +638,30 @@ export function ChatSidebar({ className, onConfigOpen, isMobileOpen = false, onM
             </div>
           ))}
         </div>
-
-        {/* Mobile Close Button - Bottom Position */}
-        {isMobileOpen && (
-          <div className="flex-shrink-0 p-3 border-t border-slate-700 dark:border-slate-700 md:hidden flex justify-center">
-            <button
-              onClick={onMobileClose}
-              className={cn(
-                "p-3 rounded-full border-2 border-slate-400 dark:border-slate-500 transition-all duration-200",
-                "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600",
-                "hover:border-slate-500 dark:hover:border-slate-400",
-                "active:scale-95 active:bg-slate-300 dark:active:bg-slate-500",
-                "shadow-sm hover:shadow-md touch-manipulation"
-              )}
-              title="Close Menu"
-            >
-              <X className="w-5 h-5" style={{ color: '#374151' }} />
-            </button>
+        
+        {/* Bottom Actions Section */}
+        {!isCollapsed && (
+          <div className="flex-shrink-0 border-t border-slate-700 dark:border-slate-700 p-4 space-y-2">
+            {/* Settings and Theme Toggle Row */}
+            <div className="flex items-center justify-between space-x-2">
+              <button
+                onClick={onConfigOpen}
+                className={cn(
+                  "flex-1 flex items-center space-x-3 px-3 py-2 text-sm rounded-lg transition-colors text-left",
+                  "hover:bg-slate-100 dark:hover:bg-slate-800",
+                  "active:bg-slate-200 dark:active:bg-slate-700 touch-manipulation"
+                )}
+                style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}
+              >
+                <Settings className="w-4 h-4 flex-shrink-0" />
+                <span>Settings</span>
+              </button>
+              
+              {/* Theme Toggle - Mobile version */}
+              <div className="flex-shrink-0">
+                <ThemeToggle className="scale-90" />
+              </div>
+            </div>
           </div>
         )}
 

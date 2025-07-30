@@ -10,13 +10,13 @@ import {
   MoreVertical,
   Plus,
   Settings,
-  Trash2,
-  X
+  Trash2
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import Image from 'next/image';
 import { Modal } from './Modal';
+import { ThemeToggle } from './ThemeToggle';
 import { cn } from '@/lib/utils';
 import { useFirebase } from '@/contexts/FirebaseContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -59,6 +59,12 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
   const [editingChat, setEditingChat] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [openChatMenu, setOpenChatMenu] = useState<string | null>(null);
+  
+  // Swipe handling state
+  const [swipeStartX, setSwipeStartX] = useState<number | null>(null);
+  const [swipeCurrentX, setSwipeCurrentX] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   // Use centralized health check from FirebaseContext to avoid circular dependency
 
@@ -157,6 +163,40 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
     setOpenChatMenu(null);
   }, []);
 
+  // Swipe handling functions
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!isMobileOpen) return;
+    const touch = e.touches[0];
+    setSwipeStartX(touch.clientX);
+    setSwipeCurrentX(touch.clientX);
+    setIsDragging(true);
+  }, [isMobileOpen]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDragging || swipeStartX === null) return;
+    const touch = e.touches[0];
+    setSwipeCurrentX(touch.clientX);
+  }, [isDragging, swipeStartX]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!isDragging || swipeStartX === null || swipeCurrentX === null) {
+      setIsDragging(false);
+      setSwipeStartX(null);
+      setSwipeCurrentX(null);
+      return;
+    }
+
+    const swipeDistance = swipeCurrentX - swipeStartX;
+    const swipeThreshold = -100; // Swipe left 100px to close
+
+    if (swipeDistance < swipeThreshold && onMobileClose) {
+      onMobileClose();
+    }
+
+    setIsDragging(false);
+    setSwipeStartX(null);
+    setSwipeCurrentX(null);
+  }, [isDragging, swipeStartX, swipeCurrentX, onMobileClose]);
 
 
   // Mock handlers for new buttons
@@ -208,22 +248,31 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
       )}
 
       <div 
+        ref={sidebarRef}
         className={cn(
           'flex flex-col h-full transition-all duration-300 shadow-lg relative backdrop-blur-xl',
           // Desktop: Normal sidebar behavior with border-r
-          'md:border-r border-slate-300 dark:border-slate-700',
-          // Mobile: Full screen when open, completely hidden when closed
-          isMobileOpen ? 'fixed inset-0 z-50 w-full h-full flex md:relative md:w-80' : 'hidden md:flex',
+          'md:border-r border-slate-300',
+          // Mobile: Reduced width to show background content, positioned left, hidden when closed
+          isMobileOpen ? 'fixed left-0 top-0 bottom-0 z-50 w-96 flex md:relative md:w-80' : 'hidden md:flex',
           // Desktop width - only apply when visible on desktop
           'md:' + (isCollapsed ? 'w-16' : 'w-80'),
           className
         )}
         style={{
-          backgroundColor: theme === 'light' ? '#f8fafc' : '#0f172a'
+          borderColor: theme === 'dark' ? '#0f172a' : '',
+          backgroundColor: theme === 'light' ? '#f8fafc' : '#0f172a',
+          // Apply swipe transform on mobile
+          transform: isMobileOpen && isDragging && swipeStartX !== null && swipeCurrentX !== null 
+            ? `translateX(${Math.min(0, swipeCurrentX - swipeStartX)}px)` 
+            : undefined
         }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {/* Figma-Style Header - Clean App Branding */}
-        <div className="flex-shrink-0 p-6 md:p-4 border-b border-slate-300 dark:border-slate-700">
+        <div className="flex-shrink-0 p-6 md:p-4 border-slate-300 dark:border-slate-700">
           <div className="flex items-center justify-between">
             {!isCollapsed && (
               <div className="flex items-center space-x-3">
@@ -295,7 +344,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
         <div className="flex-1 overflow-y-auto">
           {/* Recent chats header - Always show as per Figma design */}
           {!isCollapsed && (
-            <div className="px-6 md:px-4 py-3 md:py-2 border-b border-slate-200 dark:border-slate-700">
+            <div className="px-6 md:px-4 py-3 md:py-2 border-slate-200 dark:border-slate-700">
               <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">
                 Recent chats
               </h3>
@@ -319,7 +368,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
             <div
               key={chat.id}
               className={cn(
-                'relative group cursor-pointer border-b border-slate-200 dark:border-slate-800 last:border-b-0',
+                'relative group cursor-pointer border-slate-200 dark:border-slate-800 last:border-b-0',
                 'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors',
                 chat.id === activeChat?.id && 'bg-blue-50 dark:bg-blue-900/20 border-r-2 border-r-blue-500'
               )}
@@ -420,20 +469,27 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
 
         {/* Bottom Actions Section - Figma Design */}
         {!isCollapsed && (
-          <div className="flex-shrink-0 border-t border-slate-300 dark:border-slate-700 p-4 space-y-2">
-            {/* Settings Button */}
-            <button
-              onClick={onConfigOpen}
-              className={cn(
-                "w-full flex items-center space-x-3 px-3 py-2 text-sm rounded-lg transition-colors text-left",
-                "hover:bg-slate-200 dark:hover:bg-slate-800",
-                "active:bg-slate-300 dark:active:bg-slate-700 touch-manipulation"
-              )}
-              style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}
-            >
-              <Settings className="w-4 h-4 flex-shrink-0" />
-              <span>Settings</span>
-            </button>
+          <div className="flex-shrink-0 border-slate-300 dark:border-slate-700 p-4 space-y-2">
+            {/* Settings and Theme Toggle Row */}
+            <div className="flex items-center justify-between space-x-2">
+              <button
+                onClick={onConfigOpen}
+                className={cn(
+                  "flex-1 flex items-center space-x-3 px-3 py-2 text-sm rounded-lg transition-colors text-left",
+                  "hover:bg-slate-200 dark:hover:bg-slate-800",
+                  "active:bg-slate-300 dark:active:bg-slate-700 touch-manipulation"
+                )}
+                style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}
+              >
+                <Settings className="w-4 h-4 flex-shrink-0" />
+                <span>Settings</span>
+              </button>
+              
+              {/* Theme Toggle - Mobile version */}
+              <div className="flex-shrink-0">
+                <ThemeToggle className="scale-90" />
+              </div>
+            </div>
 
             {/* Help Button */}
             <button
@@ -450,7 +506,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
             </button>
 
             {/* Upgrade to PRO Button */}
-            <button
+            {/* <button
               onClick={handleUpgradeClick}
               className={cn(
                 "w-full flex items-center justify-center space-x-2 px-4 py-3 text-sm font-medium rounded-lg transition-all",
@@ -461,35 +517,11 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
             >
               <Crown className="w-4 h-4 flex-shrink-0" />
               <span>Upgrade to PRO</span>
-            </button>
+            </button> */}
           </div>
         )}
 
 
-        {/* Mobile Close Button - Bottom Position */}
-        {isMobileOpen && (
-          <div 
-            className="flex-shrink-0 p-6 border-t border-slate-300 dark:border-slate-700 md:hidden flex justify-center"
-            style={{
-              backgroundColor: theme === 'light' ? '#f8fafc' : '#0f172a'
-            }}
-          >
-            <button
-              onClick={onMobileClose}
-              className={cn(
-                "px-8 py-4 rounded-full border-2 border-slate-400 dark:border-slate-400 transition-all duration-200",
-                "bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700",
-                "hover:border-slate-500 dark:hover:border-slate-300",
-                "active:scale-95 active:bg-slate-200 dark:active:bg-slate-600",
-                "shadow-lg hover:shadow-xl touch-manipulation flex items-center space-x-3"
-              )}
-              title="Close Menu"
-            >
-              <X className="w-6 h-6" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
-              <span className="text-base font-medium" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>Close</span>
-            </button>
-          </div>
-        )}
 
       </div>
 

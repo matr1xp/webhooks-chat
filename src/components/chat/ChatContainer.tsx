@@ -1,22 +1,23 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { MessageList } from './MessageList';
+import { AlertCircle, Bell, Menu, Search, Share } from 'lucide-react';
+import { generateSessionId, generateUserId, sanitizeInput } from '@/lib/utils';
+import { useEffect, useMemo, useState } from 'react';
+
 import { MessageInput } from './MessageInput';
-import { WelcomeScreen } from './WelcomeScreen';
+import { MessageList } from './MessageList';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { UserProfileDropdown } from '@/components/ui/UserProfileDropdown';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useConfig } from '@/contexts/ConfigContext';
-import { useChatStore } from '@/hooks/useReduxChat';
-import { useFirebaseChat } from '@/hooks/useFirebaseChat';
-import { useFirebase } from '@/contexts/FirebaseContext';
-import { webhookClient } from '@/lib/webhook-client';
 import { WebhookPayload } from '@/types/chat';
-import { generateSessionId, generateUserId, sanitizeInput } from '@/lib/utils';
+import { WelcomeScreen } from './WelcomeScreen';
 import { cn } from '@/lib/utils';
-import { AlertCircle, Search, Share, Bell, Menu } from 'lucide-react';
+import { useChatStore } from '@/hooks/useReduxChat';
+import { useConfig } from '@/contexts/ConfigContext';
 import { useFileCache } from '@/hooks/useFileCache';
+import { useFirebase } from '@/contexts/FirebaseContext';
+import { useFirebaseChat } from '@/hooks/useFirebaseChat';
+import { useTheme } from '@/contexts/ThemeContext';
+import { webhookClient } from '@/lib/webhook-client';
 
 interface ChatContainerProps {
   className?: string;
@@ -232,6 +233,18 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
       return;
     }
 
+    // Check if webhook is healthy (connected)
+    if (isOnline === false) {
+      setError('Webhook is offline. Please check your webhook configuration and try again.');
+      return;
+    }
+
+    // If webhook status is still checking, wait a moment and check again
+    if (isOnline === null) {
+      setError('Checking webhook connection. Please wait and try again.');
+      return;
+    }
+
     // Auto-create a new chat if none is selected (for welcome screen suggestions)
     let currentChat = activeChat;
     if (!currentChat && USE_FIREBASE) {
@@ -244,6 +257,7 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
         firebase.setActiveChat(newChat.id);
         currentChat = newChat;
       } catch (error) {
+        console.error('Failed to create new chat:', error);
         setError('Failed to create new chat. Please try again.');
         return;
       }
@@ -405,7 +419,7 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
   // Memoize autoFocus to prevent unnecessary re-renders
   const shouldAutoFocus = useMemo(() => 
     !!(activeWebhook && activeChat && !isLoading), 
-    [activeWebhook?.id, activeChat?.id, isLoading]
+    [activeWebhook, activeChat, isLoading]
   );
 
   try {
@@ -417,7 +431,7 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
       className
     )}>
       {/* Header - Mobile-optimized design */}
-      <div className="flex-shrink-0 border-b border-[#e2e8f0] dark:border-[#374151] chat-header z-30 relative">
+      <div className="flex-shrink-0 border-[#e2e8f0] dark:border-[#374151] chat-header z-30 relative">
         <div className="p-3 md:p-4 lg:p-6">
           <div className="flex items-center justify-between">
             {/* Mobile Sidebar Button */}
@@ -545,7 +559,7 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
         // Desktop: relative positioning (normal flex item)
         "md:relative md:bottom-auto md:left-auto md:right-auto"
       )}>
-        <div className="border-t border-[#e2e8f0] dark:border-[#374151] bg-[#ffffff] dark:bg-[#1e293b]">
+        <div className="border-[#e2e8f0] dark:border-[#374151] bg-[#ffffff] dark:bg-[#1e293b]">
           <MessageInput
             onSendMessage={handleSendMessage}
             disabled={isLoading || !activeWebhook}

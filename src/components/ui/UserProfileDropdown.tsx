@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { ChevronDown, User, Settings, LogOut } from 'lucide-react';
-import { useTheme } from '@/contexts/ThemeContext';
+import { ChevronDown, LogOut, Settings, User } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+
+import Image from 'next/image';
+import { cn } from '@/lib/utils';
 import { useFirebase } from '@/contexts/FirebaseContext';
 import { useUserPhotoCache } from '@/hooks/useUserPhotoCache';
-import { cn } from '@/lib/utils';
-import Image from 'next/image';
 
 interface UserProfileDropdownProps {
   className?: string;
@@ -15,7 +15,6 @@ interface UserProfileDropdownProps {
 export function UserProfileDropdown({ 
   className 
 }: UserProfileDropdownProps) {
-  const { theme } = useTheme();
   const { user, userProfile, signOut } = useFirebase();
   const { getCachedPhoto } = useUserPhotoCache();
   const [isOpen, setIsOpen] = useState(false);
@@ -127,18 +126,14 @@ export function UserProfileDropdown({
         </div>
 
         {/* User Name */}
-        <span className={cn(
-          'text-sm font-medium hidden sm:inline',
-          theme === 'light' ? 'text-slate-700' : 'text-slate-200'
-        )}>
+        <span className="text-sm font-medium hidden sm:inline text-slate-700 dark:text-slate-200">
           {userName}
         </span>
 
         {/* Dropdown Arrow */}
         <ChevronDown 
           className={cn(
-            'w-4 h-4 transition-transform',
-            theme === 'light' ? 'text-slate-500' : 'text-slate-400',
+            'w-4 h-4 transition-transform text-slate-500 dark:text-slate-400',
             isOpen && 'rotate-180'
           )} 
         />
@@ -146,13 +141,7 @@ export function UserProfileDropdown({
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className={cn(
-          'absolute right-0 top-full mt-2 w-48 py-1 rounded-lg shadow-lg border z-50',
-          'animate-in fade-in-0 zoom-in-95 duration-200',
-          theme === 'light' 
-            ? 'bg-white border-slate-200' 
-            : 'bg-slate-800 border-slate-700'
-        )}>
+        <div className="absolute right-0 top-full mt-2 w-48 py-1 rounded-lg shadow-lg border z-50 duration-200 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
           {menuItems.map((item, index) => (
             <button
               key={index}
@@ -161,7 +150,7 @@ export function UserProfileDropdown({
                 'w-full flex items-center space-x-3 px-4 py-2 text-sm text-left transition-colors touch-manipulation',
                 'hover:bg-slate-100 dark:hover:bg-slate-700',
                 'active:bg-slate-200 dark:active:bg-slate-600',
-                theme === 'light' ? 'text-slate-700' : 'text-slate-200'
+                'text-slate-700 dark:text-slate-200'
               )}
             >
               <item.icon className="w-4 h-4" />
