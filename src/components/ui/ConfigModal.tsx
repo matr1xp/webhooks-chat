@@ -1,25 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useConfig } from '@/contexts/ConfigContext';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useFirebase } from '@/contexts/FirebaseContext';
-import { cn } from '@/lib/utils';
-import { Modal } from './Modal';
-import { cloudFunctions } from '@/lib/cloud-functions';
-import { 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  Save, 
-  X, 
-  Eye, 
+import {
+  Edit3,
+  Eye,
   EyeOff,
-  Webhook,
   Globe,
-  Key
+  Key,
+  Plus,
+  Save,
+  Trash2,
+  Webhook,
+  X
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+
+import { Modal } from './Modal';
 import { WebhookConfig } from '@/types/config';
+import { cloudFunctions } from '@/lib/cloud-functions';
+import { cn } from '@/lib/utils';
+import { useConfig } from '@/contexts/ConfigContext';
+import { useFirebase } from '@/contexts/FirebaseContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ConfigModalProps {
   isOpen: boolean;
@@ -442,18 +443,18 @@ export function ConfigModal({ isOpen, onClose }: ConfigModalProps) {
                           <div className="flex space-x-2 justify-center">
                             <button
                               onClick={() => setEditingWebhook(webhook.id)}
-                              className="p-3 sm:p-2 rounded-lg hover-enhanced transition-colors flex-1 sm:flex-none min-h-[44px] min-w-[44px] flex items-center justify-center"
+                              className="p-3 sm:p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex-1 sm:flex-none min-h-[44px] min-w-[44px] flex items-center justify-center group"
                               title="Edit Webhook"
                             >
-                              <Edit3 className="w-5 h-5 sm:w-4 sm:h-4 text-gray-700 dark:text-slate-400" />
+                              <Edit3 className="w-5 h-5 sm:w-4 sm:h-4 text-gray-700 dark:text-slate-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors" />
                             </button>
                             
                             <button
                               onClick={() => setShowDeleteModal(webhook.id)}
-                              className="p-3 sm:p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900 active:bg-red-200 dark:active:bg-red-800 transition-colors flex-1 sm:flex-none min-h-[44px] min-w-[44px] flex items-center justify-center"
+                              className="p-3 sm:p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900 active:bg-red-200 dark:active:bg-red-800 transition-colors flex-1 sm:flex-none min-h-[44px] min-w-[44px] flex items-center justify-center group"
                               title="Delete Webhook"
                             >
-                              <Trash2 className="w-5 h-5 sm:w-4 sm:h-4 text-red-500" />
+                              <Trash2 className="w-5 h-5 sm:w-4 sm:h-4 text-red-500 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors" />
                             </button>
                             
                             {/* Activate/Deactivate Button - Now positioned after delete */}

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -17,10 +18,12 @@ export function TypingIndicator({ isVisible, className }: TypingIndicatorProps) 
     <div className={cn('flex justify-start items-start space-x-3 mb-4', className)}>
       {/* Bot avatar */}
       <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-lg ring-2 ring-white ring-opacity-20 overflow-hidden">
-        <img
-          src="/robot-01-sm.png"
+        <Image
+          src="/owl.gif"
           alt="AI Assistant"
-          className="w-8 h-8 object-contain"
+          width={32}
+          height={32}
+          className="object-contain"
         />
       </div>
       
