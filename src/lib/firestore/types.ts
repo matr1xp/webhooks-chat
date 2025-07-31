@@ -83,3 +83,14 @@ export const convertTimestamp = (timestamp: Timestamp | any): string => {
 export const createTimestamp = (date?: Date): Timestamp => {
   return Timestamp.fromDate(date || new Date());
 };
+
+// Prompt configuration for dynamic suggestions
+export interface FirestorePromptConfig {
+  id: string;              // Document ID = webhook name (e.g., "OpenAI GPT4")
+  webhookName: string;     // Display name for the webhook
+  title: string;           // Welcome message title (e.g., "I'm an AI powered chat bot")
+  suggestions: string[];   // Array of prompt suggestions
+  createdAt: Timestamp;    // Document creation time
+  updatedAt: Timestamp;    // Last modification time
+  isActive: boolean;       // Enable/disable suggestions for this webhook
+}

@@ -27,10 +27,10 @@ export function PromptSuggestionCard({
         'hover:shadow-md active:scale-95 touch-manipulation',
         'flex items-center justify-between min-h-[80px] w-full',
         highlighted
-          ? 'bg-cyan-600 text-white border-cyan-600 hover:bg-cyan-700 hover:border-cyan-700'
+          ? 'bg-cyan-600 text-white border-cyan-600 hover:bg-cyan-700 hover:border-cyan-700 active:bg-cyan-700 active:border-cyan-700'
           : theme === 'light'
-          ? 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-700'
-          : 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-slate-600 text-slate-200',
+          ? 'bg-white border-slate-200 hover:bg-cyan-600 hover:border-cyan-600 text-slate-700 hover:text-white active:bg-cyan-600 active:border-cyan-600 active:text-white'
+          : 'bg-slate-800 border-slate-700 hover:bg-cyan-600 hover:border-cyan-600 text-slate-200 hover:text-white active:bg-cyan-600 active:border-cyan-600 active:text-white',
         className
       )}
     >
@@ -39,8 +39,8 @@ export function PromptSuggestionCard({
         highlighted 
           ? 'text-white' 
           : theme === 'light' 
-          ? 'text-slate-700' 
-          : 'text-slate-200'
+          ? 'text-slate-700 group-hover:text-white group-active:text-white' 
+          : 'text-slate-200 group-hover:text-white group-active:text-white'
       )}>
         {title}
       </span>
@@ -51,8 +51,8 @@ export function PromptSuggestionCard({
           highlighted 
             ? 'text-white' 
             : theme === 'light' 
-            ? 'text-slate-400 group-hover:text-slate-600' 
-            : 'text-slate-400 group-hover:text-slate-300'
+            ? 'text-slate-400 group-hover:text-white group-active:text-white' 
+            : 'text-slate-400 group-hover:text-white group-active:text-white'
         )} 
       />
     </button>
