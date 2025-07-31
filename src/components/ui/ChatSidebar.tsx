@@ -461,7 +461,7 @@ export function ChatSidebar({ className, onConfigOpen, isMobileOpen = false, onM
         </div>
 
         {/* Chat List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto max-h-[75vh]">
           {!activeWebhook && !isCollapsed && (
             <div className="p-4 text-center">
               <Globe className="w-8 h-8 mx-auto mb-2 opacity-50" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />

@@ -341,7 +341,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
         )}
 
         {/* Figma-Style Chat List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto max-h-[75vh]">
           {/* Recent chats header - Always show as per Figma design */}
           {!isCollapsed && (
             <div className="px-6 md:px-4 py-3 md:py-2 border-slate-200 dark:border-slate-700">
