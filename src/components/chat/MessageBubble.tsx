@@ -1,16 +1,19 @@
 'use client';
 
+import { Check, CheckCheck, Clock, Copy, Loader2, Trash2, User, X } from 'lucide-react';
+import { Dialog, DialogActions, DialogButton } from '@/components/ui/Dialog';
+import { cn, formatTimestamp } from '@/lib/utils';
+import { useEffect, useState } from 'react';
+
+import Image from 'next/image';
 import { Message } from '@/types/chat';
-import { formatTimestamp, cn } from '@/lib/utils';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useFirebase } from '@/contexts/FirebaseContext';
-import { useUserPhotoCache } from '@/hooks/useUserPhotoCache';
-import { Check, CheckCheck, X, Clock, User, Trash2, Loader2, Copy } from 'lucide-react';
-import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
+import { useFirebase } from '@/contexts/FirebaseContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useUserPhotoCache } from '@/hooks/useUserPhotoCache';
 
 interface MessageBubbleProps {
   message: Message;
@@ -23,7 +26,7 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
   const { user, deleteMessage, deleteBotReply } = useFirebase();
   const { getCachedPhoto } = useUserPhotoCache();
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [copied, setCopied] = useState(false);
   const [cachedUserAvatar, setCachedUserAvatar] = useState<string | undefined>();
   
@@ -39,7 +42,8 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
           setCachedUserAvatar(cached);
         } catch (error) {
           console.warn('Failed to load cached photo in MessageBubble:', error);
-          setCachedUserAvatar(user.photoURL); // Fallback to original URL
+          // Don't fallback to original URL to avoid 429 errors - use placeholder instead
+          setCachedUserAvatar(undefined);
         }
       } else {
         setCachedUserAvatar(undefined);
@@ -169,7 +173,7 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
     if (isDeleting) return;
     
     setIsDeleting(true);
-    setShowDeleteConfirm(false);
+    setShowDeleteDialog(false);
     
     try {
       await deleteMessage(message.id);
@@ -188,12 +192,11 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setShowDeleteConfirm(true);
+    setShowDeleteDialog(true);
   };
 
-  const handleCancelDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowDeleteConfirm(false);
+  const handleCancelDelete = () => {
+    setShowDeleteDialog(false);
   };
 
   const handleCopy = async (e: React.MouseEvent) => {
@@ -248,43 +251,8 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
       {/* User messages - right aligned */}
       {actualIsUser && (
         <div className="flex justify-end items-start space-x-3">
-          {/* Delete button for user messages */}
-          <div className="flex items-center space-x-2 opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
-            {showDeleteConfirm ? (
-              <div className="flex flex-col items-center bg-white dark:bg-slate-800 rounded-lg px-2 py-1 shadow-lg border border-slate-200 dark:border-slate-600">
-                <span className="text-xs text-slate-600 dark:text-slate-300 mb-1">Delete?</span>
-                <div className="flex items-center space-x-1">
-                  <button
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    className="text-red-600 hover:text-red-700 disabled:opacity-50 p-1"
-                    title="Confirm delete"
-                  >
-                    {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                  </button>
-                  <button
-                    onClick={handleCancelDelete}
-                    className="text-slate-500 hover:text-slate-600 p-1"
-                    title="Cancel"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={handleDeleteClick}
-                disabled={isDeleting}
-                className="text-slate-400 hover:text-red-500 transition-colors duration-200 disabled:opacity-50 p-1 rounded"
-                title="Delete message"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-          
           <div className={cn(
-            'relative max-w-[calc(100vw-8rem)] sm:max-w-sm md:max-w-md px-6 py-4 rounded-2xl rounded-tr-md',
+            'relative max-w-[calc(100vw-5rem)] sm:max-w-md md:max-w-lg lg:max-w-xl px-6 py-4 rounded-2xl rounded-tr-md',
             'text-white shadow-lg user-message',
             'transform transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5',
             getStatusColor()
@@ -292,7 +260,7 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
             {/* User message content */}
             <div className="break-words overflow-hidden">
               {message.type === 'text' && (
-                <p className="text-sm leading-relaxed">
+                <p className="text-base leading-relaxed">
                   {message.content && typeof message.content === 'string' ? message.content : '[Invalid content]'}
                 </p>
               )}
@@ -300,14 +268,15 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
                 <div>
                   {fileData && fileData.data && (
                     <div className="flex items-start space-x-3 mb-2">
-                      <img 
+                      <Image 
                         src={`data:${fileData.type};base64,${fileData.data}`}
                         alt={fileData.name}
+                        width={48}
+                        height={48}
                         className="w-12 h-12 rounded-lg object-cover flex-shrink-0 shadow-md border border-white/20"
-                        loading="lazy"
                       />
                       <div className="flex-1">
-                        <p className="text-sm leading-relaxed">
+                        <p className="text-base leading-relaxed">
                           {message.content && typeof message.content === 'string' ? message.content : '[Invalid content]'}
                         </p>
                         <p className="text-xs opacity-75 mt-1">Image sent for processing</p>
@@ -320,7 +289,7 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
                         <span className="text-sm">🖼️</span>
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm leading-relaxed">
+                        <p className="text-base leading-relaxed">
                           {message.content && typeof message.content === 'string' ? message.content : '[Invalid content]'}
                         </p>
                         <p className="text-xs opacity-75 mt-1">Image sent for processing</p>
@@ -332,11 +301,12 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
               {message.type === 'file' && (
                 <div className="flex items-start space-x-3 bg-white/10 rounded-lg p-3 backdrop-blur-sm">
                   {fileData && fileData.type.startsWith('image/') && fileData.data ? (
-                    <img 
+                    <Image 
                       src={`data:${fileData.type};base64,${fileData.data}`}
                       alt={fileData.name}
+                      width={32}
+                      height={32}
                       className="w-8 h-8 rounded-lg object-cover flex-shrink-0 shadow-md border border-white/20"
-                      loading="lazy"
                     />
                   ) : (
                     <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -360,25 +330,52 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
             </div>
           </div>
 
-          {/* User avatar */}
-          <div className="relative flex-shrink-0">
-            <div className={cn(
-              "w-9 h-9 rounded-full flex items-center justify-center shadow-lg ring-2 ring-white ring-opacity-20",
-              cachedUserAvatar && !user?.isAnonymous 
-                ? "border-2 border-emerald-400" 
-                : "bg-gradient-to-br from-emerald-400 to-emerald-600"
-            )}>
-              {cachedUserAvatar && !user?.isAnonymous ? (
-                <img
-                  src={cachedUserAvatar}
-                  alt={user?.displayName || 'User'}
-                  className="w-9 h-9 rounded-full object-cover"
-                />
-              ) : user?.isAnonymous ? (
-                <span className="text-white text-sm font-medium">👤</span>
-              ) : (
-                <User className="w-4 h-4 text-white" />
-              )}
+          {/* User avatar and action buttons container */}
+          <div className="flex flex-col items-center space-y-4">
+            {/* User avatar */}
+            <div className="relative flex-shrink-0">
+              <div className={cn(
+                "w-9 h-9 rounded-full flex items-center justify-center shadow-lg ring-2 ring-white ring-opacity-20",
+                cachedUserAvatar && !user?.isAnonymous 
+                  ? "border-2 border-emerald-400" 
+                  : "bg-gradient-to-br from-emerald-400 to-emerald-600"
+              )}>
+                {cachedUserAvatar && !user?.isAnonymous ? (
+                  <Image
+                    src={cachedUserAvatar}
+                    alt={user?.displayName || 'User'}
+                    width={36}
+                    height={36}
+                    className="w-9 h-9 rounded-full object-cover"
+                  />
+                ) : user?.isAnonymous ? (
+                  <span className="text-white text-sm font-medium">👤</span>
+                ) : (
+                  <User className="w-4 h-4 text-white" />
+                )}
+              </div>
+            </div>
+
+            {/* Action buttons for user messages - positioned below avatar */}
+            <div className="flex flex-col items-center space-y-3 opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+              {/* Copy button */}
+              <button
+                onClick={handleCopy}
+                className="text-slate-400 hover:text-blue-500 transition-colors duration-200 p-1 rounded"
+                title="Copy message"
+              >
+                {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+              </button>
+              
+              {/* Delete button */}
+              <button
+                onClick={handleDeleteClick}
+                disabled={isDeleting}
+                className="text-slate-400 hover:text-red-500 transition-colors duration-200 disabled:opacity-50 p-1 rounded"
+                title="Delete message"
+              >
+                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              </button>
             </div>
           </div>
         </div>
@@ -387,17 +384,44 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
       {/* Bot messages - left aligned */}
       {!actualIsUser && (
         <div className="flex justify-start items-start space-x-3">
-          {/* Bot avatar */}
-          <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-lg ring-2 ring-white ring-opacity-20 overflow-hidden">
-            <img
-              src="/robot-01-sm.png"
-              alt="AI Assistant"
-              className="w-8 h-8 object-contain"
-            />
+          {/* Bot avatar and action buttons container */}
+          <div className="flex flex-col items-center space-y-4">
+            {/* Bot avatar */}
+            <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0 shadow-lg ring-2 ring-white ring-opacity-20 overflow-hidden">
+              <Image
+                src="/owl.gif"
+                alt="AI Assistant"
+                width={36}
+                height={36}
+                className="w-8 h-8 object-contain"
+              />
+            </div>
+
+            {/* Action buttons for bot messages - positioned below avatar */}
+            <div className="flex flex-col items-center space-y-3 opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+              {/* Copy button */}
+              <button
+                onClick={handleCopy}
+                className="text-slate-400 hover:text-blue-500 transition-colors duration-200 p-1 rounded"
+                title="Copy message"
+              >
+                {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+              </button>
+              
+              {/* Delete button */}
+              <button
+                onClick={handleDeleteClick}
+                disabled={isDeleting}
+                className="text-slate-400 hover:text-red-500 transition-colors duration-200 disabled:opacity-50 p-1 rounded"
+                title="Delete message"
+              >
+                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
           
           <div className={cn(
-            'relative flex-1 max-w-[calc(100vw-8rem)] sm:max-w-md md:max-w-lg px-6 py-4 rounded-2xl rounded-tl-md',
+            'relative flex-1 max-w-[calc(100vw-5rem)] sm:max-w-lg md:max-w-2xl lg:max-w-4xl px-6 py-4 rounded-2xl rounded-tl-md',
             'shadow-lg bot-message',
             'transform transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5',
             'backdrop-blur-sm',
@@ -406,14 +430,14 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
             {/* Bot message content */}
             <div className="break-words overflow-hidden">
               {message.type === 'text' && (
-                <div className="text-sm markdown-content" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>
+                <div className="text-base markdown-content" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>
                   {message.content && typeof message.content === 'string' ? (
                     <ReactMarkdown 
                       remarkPlugins={[remarkGfm, remarkMath]}
                       rehypePlugins={[rehypeKatex]}
                       components={{
                       // Custom styling for markdown elements in bot messages
-                      p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>{children}</p>,
+                      p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed text-base" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>{children}</p>,
                       strong: ({ children }) => <strong className="font-semibold" style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}>{children}</strong>,
                       em: ({ children }) => <em className="italic" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}>{children}</em>,
                       code: ({ children }) => (
@@ -434,7 +458,7 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
                       ),
                       ul: ({ children }) => <ul className="list-disc list-outside mb-2 space-y-1 pl-4" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>{children}</ul>,
                       ol: ({ children }) => <ol className="list-decimal list-outside mb-2 space-y-1 pl-4" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>{children}</ol>,
-                      li: ({ children }) => <li className="text-sm leading-relaxed" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>{children}</li>,
+                      li: ({ children }) => <li className="text-base leading-relaxed" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>{children}</li>,
                       h1: ({ children }) => <h1 className="text-lg font-bold mb-3 border-b border-slate-200 dark:border-slate-600 pb-1" style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}>{children}</h1>,
                       h2: ({ children }) => <h2 className="text-base font-bold mb-2" style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}>{children}</h2>,
                       h3: ({ children }) => <h3 className="text-sm font-bold mb-2" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>{children}</h3>,
@@ -495,13 +519,14 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
                 <div>
                   {fileData && fileData.data && (
                     <div className="flex items-start space-x-3 mb-2">
-                      <img 
+                      <Image 
                         src={`data:${fileData.type};base64,${fileData.data}`}
                         alt={fileData.name}
+                        width={48}
+                        height={48}
                         className="w-12 h-12 rounded-lg object-cover flex-shrink-0 shadow-md border border-slate-200 dark:border-slate-600"
-                        loading="lazy"
                       />
-                      <div className="text-sm markdown-content flex-1" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>
+                      <div className="text-base markdown-content flex-1" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>
                         {message.content && typeof message.content === 'string' ? message.content : '[Invalid content]'}
                         <p className="text-xs opacity-75 mt-1" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>Image processed</p>
                       </div>
@@ -513,7 +538,7 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
                         <span className="text-sm">🖼️</span>
                       </div>
                       <div className="flex-1">
-                        <div className="text-sm markdown-content" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>
+                        <div className="text-base markdown-content" style={{ color: theme === 'light' ? '#1f2937' : '#e2e8f0' }}>
                           {message.content && typeof message.content === 'string' ? message.content : '[Invalid content]'}
                         </div>
                         <p className="text-xs opacity-75 mt-1" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>Image processed</p>
@@ -525,11 +550,12 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
               {message.type === 'file' && (
                 <div className="flex items-start space-x-3 bg-slate-50 dark:bg-slate-700 rounded-lg p-3">
                   {fileData && fileData.type.startsWith('image/') && fileData.data ? (
-                    <img 
+                    <Image 
                       src={`data:${fileData.type};base64,${fileData.data}`}
                       alt={fileData.name}
+                      width={32}
+                      height={32}
                       className="w-8 h-8 rounded-lg object-cover flex-shrink-0 shadow-md border border-slate-200 dark:border-slate-600"
-                      loading="lazy"
                     />
                   ) : (
                     <div className="w-8 h-8 bg-slate-200 dark:bg-slate-600 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -549,55 +575,47 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
               <span className="font-medium">AI Assistant • {formatTimestamp(message.timestamp)}</span>
             </div>
           </div>
-          
-          {/* Action buttons for bot messages - positioned vertically to save horizontal space */}
-          <div className="flex flex-col items-center space-y-1 opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
-            {showDeleteConfirm ? (
-              <div className="flex flex-col items-center bg-white dark:bg-slate-800 rounded-lg px-2 py-1 shadow-lg border border-slate-200 dark:border-slate-600">
-                <span className="text-xs text-slate-600 dark:text-slate-300 mb-1">Delete?</span>
-                <div className="flex items-center space-x-1">
-                  <button
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    className="text-red-600 hover:text-red-700 disabled:opacity-50 p-1"
-                    title="Confirm delete"
-                  >
-                    {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-                  </button>
-                  <button
-                    onClick={handleCancelDelete}
-                    className="text-slate-500 hover:text-slate-600 p-1"
-                    title="Cancel"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                {/* Copy button */}
-                <button
-                  onClick={handleCopy}
-                  className="text-slate-400 hover:text-blue-500 transition-colors duration-200 p-1 rounded"
-                  title="Copy message"
-                >
-                  {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                </button>
-                
-                {/* Delete button */}
-                <button
-                  onClick={handleDeleteClick}
-                  disabled={isDeleting}
-                  className="text-slate-400 hover:text-red-500 transition-colors duration-200 disabled:opacity-50 p-1 rounded"
-                  title="Delete message"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </>
-            )}
-          </div>
         </div>
       )}
+
+      {/* Delete confirmation dialog */}
+      <Dialog
+        isOpen={showDeleteDialog}
+        onClose={handleCancelDelete}
+        title="Delete Message"
+      >
+        <p className="text-slate-600 dark:text-slate-300 mb-4">
+          Are you sure you want to delete this message? This action cannot be undone.
+          {actualIsUser && (
+            <span className="block mt-2 text-sm text-slate-500 dark:text-slate-400">
+              This will also delete any bot reply to this message.
+            </span>
+          )}
+        </p>
+        
+        <DialogActions>
+          <DialogButton
+            variant="secondary"
+            onClick={handleCancelDelete}
+          >
+            No, Cancel
+          </DialogButton>
+          <DialogButton
+            variant="danger"
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Deleting...
+              </>
+            ) : (
+              'Yes, Delete'
+            )}
+          </DialogButton>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }

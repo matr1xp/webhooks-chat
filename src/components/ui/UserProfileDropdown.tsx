@@ -44,7 +44,8 @@ export function UserProfileDropdown({
           setCachedAvatar(cached);
         } catch (error) {
           console.warn('Failed to load cached photo:', error);
-          setCachedAvatar(user.photoURL); // Fallback to original URL
+          // Don't fallback to original URL to avoid 429 errors - use placeholder instead
+          setCachedAvatar(undefined);
         }
       } else {
         setCachedAvatar(undefined);

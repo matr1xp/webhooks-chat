@@ -254,7 +254,6 @@ export const useFirestoreAuth = (): UseFirestoreAuthReturn => {
           let profile = await getUserProfile(firebaseUser.uid);
           
           if (!profile) {
-         
             // Create profile with authentication provider information
             const userInfo = {
               name: firebaseUser.displayName || 
@@ -263,15 +262,19 @@ export const useFirestoreAuth = (): UseFirestoreAuthReturn => {
               email: firebaseUser.email || undefined,
             };
             
-            await createUserProfile(firebaseUser.uid, userInfo);
+            try {
+              await createUserProfile(firebaseUser.uid, userInfo);
+              
+              // Wait a moment and try again
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              profile = await getUserProfile(firebaseUser.uid);
+            } catch (error) {
+              console.warn('Profile creation failed:', error);
+            }
             
-            // Wait a moment and try again
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            profile = await getUserProfile(firebaseUser.uid);
-            
+            // Always ensure we have a profile object to prevent undefined state
             if (!profile) {
-              console.warn('Failed to create user profile, creating minimal profile');
-              // Fallback: create a minimal profile object
+              console.warn('Failed to create user profile, using fallback profile');
               profile = {
                 id: firebaseUser.uid,
                 name: userInfo.name,

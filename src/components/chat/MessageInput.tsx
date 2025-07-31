@@ -177,7 +177,7 @@ export function MessageInput({
       className
     )}>
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-end space-x-3">
+        <div className="flex items-center space-x-3">
           {/* File upload button */}
           <button
             onClick={() => setShowFileUpload(true)}
@@ -207,7 +207,7 @@ export function MessageInput({
                 disabled={disabled || isSubmitting}
                 autoFocus={autoFocus && !disabled}
                 className={cn(
-                  'w-full min-h-[48px] sm:min-h-[52px] max-h-[120px] px-4 py-3 rounded-2xl bg-transparent text-sm resize-none focus:outline-none leading-relaxed touch-manipulation',
+                  'w-full min-h-[48px] sm:min-h-[52px] max-h-[120px] px-4 py-3 rounded-2xl bg-transparent text-sm resize-none focus:outline-none leading-normal touch-manipulation',
                   (disabled || isSubmitting) && 'opacity-50 cursor-not-allowed'
                 )}
                 style={{ 
