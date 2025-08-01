@@ -25,14 +25,14 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.healthCheck = exports.webhookSend = void 0;
 const admin = __importStar(require("firebase-admin"));
+const health_check_1 = require("./health-check");
+Object.defineProperty(exports, "healthCheck", { enumerable: true, get: function () { return health_check_1.healthCheck; } });
 const v2_1 = require("firebase-functions/v2");
 const webhook_send_1 = require("./webhook-send");
 Object.defineProperty(exports, "webhookSend", { enumerable: true, get: function () { return webhook_send_1.webhookSend; } });
-const health_check_1 = require("./health-check");
-Object.defineProperty(exports, "healthCheck", { enumerable: true, get: function () { return health_check_1.healthCheck; } });
 // Configure global options for all functions
-// Default to US region, but allow override via environment variable
-const deployRegion = process.env.FIREBASE_FUNCTIONS_REGION || 'us-central1';
+// Default to Europe North region, but allow override via environment variable
+const deployRegion = process.env.FUNCTIONS_REGION || 'us-central1';
 console.log(`Configuring Firebase Functions for region: ${deployRegion}`);
 (0, v2_1.setGlobalOptions)({ region: deployRegion });
 // Initialize Firebase Admin SDK

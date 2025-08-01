@@ -4,8 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.webhookSend = void 0;
-const https_1 = require("firebase-functions/v2/https");
 const axios_1 = __importDefault(require("axios"));
+const https_1 = require("firebase-functions/v2/https");
 // Validation function (simplified version of Zod validation)
 function validateWebhookPayload(body) {
     if (!body ||
@@ -17,6 +17,10 @@ function validateWebhookPayload(body) {
         !body.message ||
         typeof body.message.content !== 'string' ||
         !['text', 'file', 'image'].includes(body.message.type)) {
+        return null;
+    }
+    // Optional destination field validation
+    if (body.message.destination && typeof body.message.destination !== 'string') {
         return null;
     }
     // Optional file data validation
@@ -38,7 +42,7 @@ function validateWebhookPayload(body) {
     return body;
 }
 // Get region from environment variable or default to Europe North
-const deployRegion = process.env.FIREBASE_FUNCTIONS_REGION || 'us-central1';
+const deployRegion = process.env.FUNCTIONS_REGION || 'us-central1';
 exports.webhookSend = (0, https_1.onRequest)({
     cors: true,
     region: deployRegion,
@@ -127,7 +131,7 @@ exports.webhookSend = (0, https_1.onRequest)({
             });
             // Extract bot message from n8n response
             let botMessage;
-            const extractStringValue = (obj) => {
+            const extractContent = (obj) => {
                 const isHtmlContent = (str) => {
                     // More robust HTML detection to avoid false positives on JSON strings
                     const trimmed = str.trim();
@@ -152,29 +156,59 @@ exports.webhookSend = (0, https_1.onRequest)({
                         .replace(/&#x27;/g, "'")
                         .trim();
                 };
+                const extractFromObject = (obj) => {
+                    let content = null;
+                    let source = null;
+                    // First, check for direct source field
+                    if (obj.source && typeof obj.source === 'string') {
+                        source = obj.source.trim();
+                    }
+                    // Then, look for content in common fields
+                    const contentKeys = ['output', 'message', 'content', 'text', 'response', 'data', 'result'];
+                    for (const key of contentKeys) {
+                        if (obj[key] && typeof obj[key] === 'string' && obj[key].trim().length > 0) {
+                            const trimmedValue = obj[key].trim();
+                            // If it's HTML content, try to extract text content
+                            if (isHtmlContent(trimmedValue)) {
+                                const sanitized = sanitizeString(trimmedValue);
+                                if (sanitized.length > 0 && !isHtmlContent(sanitized)) {
+                                    console.log(`Extracted text from HTML content in key "${key}"`);
+                                    content = sanitized;
+                                    break;
+                                }
+                                continue;
+                            }
+                            console.log(`Extracted bot response from key "${key}"`);
+                            content = trimmedValue;
+                            break;
+                        }
+                    }
+                    return { content, source };
+                };
                 if (typeof obj === 'string') {
                     const trimmedStr = obj.trim();
                     if (trimmedStr.length === 0) {
-                        return null;
+                        return { content: null, source: null };
                     }
-                    // Try to parse as JSON first - if successful, extract the content
+                    // Try to parse as JSON first - if successful, extract the content and source
                     if (trimmedStr.startsWith('{') || trimmedStr.startsWith('[')) {
                         try {
                             const parsed = JSON.parse(trimmedStr);
-                            // If it's a JSON object with a message/content field, extract it
-                            if (typeof parsed === 'object' && parsed !== null) {
-                                const possibleKeys = ['message', 'content', 'text', 'response', 'data', 'result'];
-                                for (const key of possibleKeys) {
-                                    if (parsed[key] && typeof parsed[key] === 'string') {
-                                        console.log(`Extracted content from JSON field "${key}"`);
-                                        return parsed[key].trim();
-                                    }
+                            // If it's a JSON array, try first element
+                            if (Array.isArray(parsed) && parsed.length > 0) {
+                                if (typeof parsed[0] === 'object' && parsed[0] !== null) {
+                                    console.log('Extracted from JSON array object');
+                                    return extractFromObject(parsed[0]);
+                                }
+                                else if (typeof parsed[0] === 'string') {
+                                    console.log('Extracted content from JSON array string');
+                                    return { content: parsed[0].trim(), source: null };
                                 }
                             }
-                            // If JSON array, try first element
-                            if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
-                                console.log('Extracted content from JSON array');
-                                return parsed[0].trim();
+                            // If it's a JSON object, extract content and source
+                            if (typeof parsed === 'object' && parsed !== null) {
+                                console.log('Extracted from JSON object');
+                                return extractFromObject(parsed);
                             }
                         }
                         catch (e) {
@@ -187,51 +221,37 @@ exports.webhookSend = (0, https_1.onRequest)({
                         // Only return if there's meaningful text content after sanitization
                         if (sanitized.length > 0 && !isHtmlContent(sanitized)) {
                             console.log('Extracted text from HTML content');
-                            return sanitized;
+                            return { content: sanitized, source: null };
                         }
                         else {
                             console.log('Rejecting HTML content with no meaningful text');
-                            return null;
+                            return { content: null, source: null };
                         }
                     }
-                    return trimmedStr;
+                    return { content: trimmedStr, source: null };
                 }
                 if (typeof obj === 'object' && obj !== null) {
-                    for (const [key, value] of Object.entries(obj)) {
-                        if (typeof value === 'string' && value.trim().length > 0) {
-                            const trimmedValue = value.trim();
-                            // If it's HTML content, try to extract text content
-                            if (isHtmlContent(trimmedValue)) {
-                                const sanitized = sanitizeString(trimmedValue);
-                                // Only return if there's meaningful text content after sanitization
-                                if (sanitized.length > 0 && !isHtmlContent(sanitized)) {
-                                    console.log(`Extracted text from HTML content in key "${key}"`);
-                                    return sanitized;
-                                }
-                                // Skip this value if it's HTML without meaningful text
-                                continue;
-                            }
-                            console.log(`Extracted bot response from key "${key}"`);
-                            return trimmedValue;
-                        }
-                    }
+                    return extractFromObject(obj);
                 }
-                return null;
+                return { content: null, source: null };
             };
             if (response.data) {
-                let extractedContent = null;
+                console.log("(webhook-send.ts) n8n response.data");
+                console.log(response.data);
+                let extracted = { content: null, source: null };
                 // Handle array responses
                 if (Array.isArray(response.data) && response.data.length > 0) {
-                    extractedContent = extractStringValue(response.data[0]);
+                    extracted = extractContent(response.data[0]);
                 }
                 // Handle direct responses
                 else {
-                    extractedContent = extractStringValue(response.data);
+                    extracted = extractContent(response.data);
                 }
-                if (extractedContent) {
+                if (extracted.content) {
                     botMessage = {
-                        content: extractedContent,
+                        content: extracted.content,
                         type: 'text',
+                        source: extracted.source || undefined,
                         metadata: { originalResponse: response.data },
                     };
                 }
