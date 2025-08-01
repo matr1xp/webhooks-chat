@@ -17,6 +17,7 @@ import { WorkingFirebaseTest } from '@/components/debug/WorkingFirebaseTest';
 export default function Home() {
   const [showConfig, setShowConfig] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
   // Feature flag: Switch between Firebase and Redux
   const USE_FIREBASE = true; // Set to false to use Redux instead
@@ -45,13 +46,14 @@ export default function Home() {
   }
 
   return (
-    <main className="h-screen flex overflow-hidden">
-      {/* Sidebar */}
+    <main className="h-screen flex overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 relative">
+      {/* Sidebar - Always render but handle mobile visibility inside the component */}
       {USE_FIREBASE ? (
         <FirebaseChatSidebar 
           onConfigOpen={() => setShowConfig(true)}
           isMobileOpen={isMobileSidebarOpen}
           onMobileClose={() => setIsMobileSidebarOpen(false)}
+          onCollapsedChange={setIsSidebarCollapsed}
         />
       ) : (
         <ChatSidebar 
@@ -61,10 +63,12 @@ export default function Home() {
         />
       )}
       
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main Chat Area - Full width on mobile, flex-1 on desktop */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[#ffffff] dark:bg-[#1e293b] w-full md:w-auto">
         <ChatContainer 
           onMobileSidebarOpen={() => setIsMobileSidebarOpen(true)}
+          isSidebarCollapsed={isSidebarCollapsed}
+          isMobileSidebarOpen={isMobileSidebarOpen}
         />
       </div>
 

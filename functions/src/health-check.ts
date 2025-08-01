@@ -1,13 +1,14 @@
-import { onRequest } from 'firebase-functions/v2/https';
 import { Request, Response } from 'express';
-import cors from 'cors';
+
 import axios from 'axios';
+import cors from 'cors';
+import { onRequest } from 'firebase-functions/v2/https';
 
 // Initialize CORS
 const corsHandler = cors({ origin: true });
 
 // Get region from environment variable or default to Europe North  
-const deployRegion = process.env.FIREBASE_FUNCTIONS_REGION || 'us-central1';
+const deployRegion = process.env.FUNCTIONS_REGION || 'us-central1';
 
 export const healthCheck = onRequest({
   cors: true,

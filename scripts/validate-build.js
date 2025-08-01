@@ -155,7 +155,7 @@ function validateHTMLPages() {
   const indexHtml = path.join(BUILD_DIR, 'index.html');
   const content = fs.readFileSync(indexHtml, 'utf-8');
   
-  if (!content.includes('<title>WebhookIQ</title>')) {
+  if (!content.includes('<title>ChatAI</title>')) {
     console.error('❌ Title not found in index.html');
     process.exit(1);
   }

@@ -1,50 +1,43 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useFirebase } from '@/contexts/FirebaseContext';
-import { cn } from '@/lib/utils';
-import Image from 'next/image';
-import { 
-  MessageSquare, 
-  Plus, 
-  Settings, 
-  ChevronLeft, 
+import {
+  ChevronLeft,
   ChevronRight,
-  MoreVertical,
-  Trash2,
+  Crown,
   Edit3,
-  Webhook,
-  Globe,
-  LogOut,
-  User,
-  Eraser,
-  X
+  HelpCircle,
+  MessageSquare,
+  MoreVertical,
+  Plus,
+  Settings,
+  Trash2
 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import Image from 'next/image';
 import { Modal } from './Modal';
+import { ThemeToggle } from './ThemeToggle';
+import { cn } from '@/lib/utils';
+import { useFirebase } from '@/contexts/FirebaseContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface FirebaseChatSidebarProps {
   className?: string;
   onConfigOpen?: () => void;
   isMobileOpen?: boolean;
   onMobileClose?: () => void;
+  onCollapsedChange?: (collapsed: boolean) => void;
 }
 
-export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = false, onMobileClose }: FirebaseChatSidebarProps) {
+export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = false, onMobileClose, onCollapsedChange }: FirebaseChatSidebarProps) {
   const { theme } = useTheme();
   const {
     // Auth
-    user,
-    userProfile,
     signInWithGoogle,
-    signOut,
     isSignedIn,
     
     // Webhooks
     activeWebhook,
-    webhooks,
-    setActiveWebhook,
-    checkWebhookHealth,
     
     // Chats
     chats,
@@ -52,20 +45,26 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
     createNewChat,
     updateChat,
     deleteChat,
-    cleanupEmptyChats,
     setActiveChat,
   } = useFirebase();
 
 
   const [isCollapsed, setIsCollapsed] = useState(false);
+  
+  // Notify parent of initial collapsed state
+  useEffect(() => {
+    onCollapsedChange?.(isCollapsed);
+  }, [isCollapsed, onCollapsedChange]);
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
-  const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [editingChat, setEditingChat] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
-  const [isOnline, setIsOnline] = useState<boolean | null>(null);
-  const isInitialized = useRef(false);
-  const [isWebhookSelectorOpen, setIsWebhookSelectorOpen] = useState(false);
   const [openChatMenu, setOpenChatMenu] = useState<string | null>(null);
+  
+  // Swipe handling state
+  const [swipeStartX, setSwipeStartX] = useState<number | null>(null);
+  const [swipeCurrentX, setSwipeCurrentX] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   // Use centralized health check from FirebaseContext to avoid circular dependency
 
@@ -164,28 +163,50 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
     setOpenChatMenu(null);
   }, []);
 
-  const handleCleanupEmptyChats = useCallback(async () => {
-    if (!activeWebhook) return;
-    
-    try {
-      const deletedCount = await cleanupEmptyChats(activeWebhook.id);
-      if (deletedCount > 0) {
-      }
-    } catch (error) {
-    }
-  }, [activeWebhook, cleanupEmptyChats]);
+  // Swipe handling functions
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!isMobileOpen) return;
+    const touch = e.touches[0];
+    setSwipeStartX(touch.clientX);
+    setSwipeCurrentX(touch.clientX);
+    setIsDragging(true);
+  }, [isMobileOpen]);
 
-  const handleSignOutClick = useCallback(() => {
-    setShowSignOutModal(true);
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDragging || swipeStartX === null) return;
+    const touch = e.touches[0];
+    setSwipeCurrentX(touch.clientX);
+  }, [isDragging, swipeStartX]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!isDragging || swipeStartX === null || swipeCurrentX === null) {
+      setIsDragging(false);
+      setSwipeStartX(null);
+      setSwipeCurrentX(null);
+      return;
+    }
+
+    const swipeDistance = swipeCurrentX - swipeStartX;
+    const swipeThreshold = -100; // Swipe left 100px to close
+
+    if (swipeDistance < swipeThreshold && onMobileClose) {
+      onMobileClose();
+    }
+
+    setIsDragging(false);
+    setSwipeStartX(null);
+    setSwipeCurrentX(null);
+  }, [isDragging, swipeStartX, swipeCurrentX, onMobileClose]);
+
+
+  // Mock handlers for new buttons
+  const handleHelpClick = useCallback(() => {
+    console.log('Help clicked');
   }, []);
 
-  const handleConfirmSignOut = useCallback(async () => {
-    try {
-      await signOut();
-      setShowSignOutModal(false);
-    } catch (error) {
-    }
-  }, [signOut]);
+  const handleUpgradeClick = useCallback(() => {
+    console.log('Upgrade to PRO clicked');
+  }, []);
 
   const formatTimeAgo = useCallback((timestamp: any) => {
     const now = new Date();
@@ -203,34 +224,18 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
     const handleClickOutside = (event: Event) => {
       const target = event.target as Element;
       // Don't close if clicking on the dropdown itself or its children
-      if (target && (target.closest('.webhook-selector') || target.closest('[aria-label="More options"]') || target.closest('.chat-menu'))) {
+      if (target && (target.closest('[aria-label="More options"]') || target.closest('.chat-menu'))) {
         return;
       }
-      setIsWebhookSelectorOpen(false);
       setOpenChatMenu(null);
     };
 
-    if (isWebhookSelectorOpen || openChatMenu) {
+    if (openChatMenu) {
       document.addEventListener('click', handleClickOutside, true);
       return () => document.removeEventListener('click', handleClickOutside, true);
     }
-  }, [isWebhookSelectorOpen, openChatMenu]);
+  }, [openChatMenu]);
 
-  // Check webhook health using centralized system - no circular dependency
-  useEffect(() => {
-    if (activeWebhook?.id) {
-      if (!isInitialized.current) {
-        isInitialized.current = true;
-      }
-      
-      // Use centralized health check from FirebaseContext
-      checkWebhookHealth(activeWebhook)
-        .then(setIsOnline)
-        .catch(() => setIsOnline(false));
-    } else {
-      setIsOnline(false);
-    }
-  }, [activeWebhook?.id, checkWebhookHealth]); // Only depend on webhook ID and stable context function
 
   return (
     <>
@@ -243,249 +248,119 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
       )}
 
       <div 
+        ref={sidebarRef}
         className={cn(
           'flex flex-col h-full transition-all duration-300 shadow-lg relative backdrop-blur-xl',
           // Desktop: Normal sidebar behavior with border-r
-          'md:border-r border-slate-300 dark:border-slate-700',
-          // Mobile: Full screen when open, hidden when closed
-          isMobileOpen ? 'fixed inset-0 z-50 w-full h-full flex' : 'hidden md:flex',
-          // Desktop width when not mobile
-          !isMobileOpen && (isCollapsed ? 'w-16' : 'w-80'),
+          'md:border-r border-slate-300',
+          // Mobile: Reduced width to show background content, positioned left, hidden when closed
+          isMobileOpen ? 'fixed left-0 top-0 bottom-0 z-50 w-96 flex md:relative md:w-80' : 'hidden md:flex',
+          // Desktop width - only apply when visible on desktop
+          'md:' + (isCollapsed ? 'w-16' : 'w-80'),
           className
         )}
         style={{
-          backgroundColor: theme === 'light' ? '#f8fafc' : '#0f172a'
+          borderColor: theme === 'dark' ? '#0f172a' : '',
+          backgroundColor: theme === 'light' ? '#f8fafc' : '#0f172a',
+          // Apply swipe transform on mobile
+          transform: isMobileOpen && isDragging && swipeStartX !== null && swipeCurrentX !== null 
+            ? `translateX(${Math.min(0, swipeCurrentX - swipeStartX)}px)` 
+            : undefined
         }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
-        {/* Header */}
-        <div className="flex-shrink-0 p-6 md:p-4 border-b border-slate-300 dark:border-slate-700 relative">
+        {/* Figma-Style Header - Clean App Branding */}
+        <div className="flex-shrink-0 p-6 md:p-4 border-slate-300 dark:border-slate-700">
           <div className="flex items-center justify-between">
             {!isCollapsed && (
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-3">
-                  <Image
-                    src="/logo.png"
-                    alt="Webn8 Logo"
-                    width={28}
-                    height={28}
-                    className="flex-shrink-0 w-7 h-7 md:w-6 md:h-6"
-                  />
-                  <h2 className="text-xl md:text-lg font-semibold truncate" style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}>
-                    WebhookIQ
-                  </h2>
-                </div>
-                {/* Webhook Selector in Header */}
-                {webhooks.length > 0 && (
-                  <div className="mt-3 md:mt-2 relative webhook-selector -mx-6 md:-mx-4 px-6 md:px-4" style={{ width: 'calc(100% + 3rem)' }}>
-                    {webhooks.length === 1 ? (
-                      // Single webhook - show as static text with status
-                      <div className="flex items-center justify-between text-sm md:text-xs" style={{ color: '#94a3b8' }}>
-                        <div className="flex items-center min-w-0 flex-1">
-                          <Webhook className="w-4 h-4 md:w-3 md:h-3 mr-2 md:mr-1 flex-shrink-0" />
-                          <span className="truncate">{activeWebhook?.name}</span>
-                        </div>
-                        {/* Connection status pill */}
-                        <div className={cn(
-                          "flex items-center space-x-1 px-3 py-1 md:px-2 md:py-0.5 rounded-full text-sm md:text-xs font-medium transition-all duration-300 ml-3 md:ml-2 flex-shrink-0",
-                          isOnline === true
-                            ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 shadow-emerald-200/50 dark:shadow-emerald-800/50 shadow-sm" 
-                            : isOnline === false
-                            ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 shadow-red-200/50 dark:shadow-red-800/50 shadow-sm"
-                            : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shadow-blue-200/50 dark:shadow-blue-800/50 shadow-sm"
-                        )}>
-                          {isOnline === true ? (
-                            <>
-                              <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse"></div>
-                              <span className="hidden sm:inline">Connected</span>
-                            </>
-                          ) : isOnline === false ? (
-                            <>
-                              <div className="w-1.5 h-1.5 bg-red-500 dark:bg-red-400 rounded-full"></div>
-                              <span className="hidden sm:inline">Offline</span>
-                            </>
-                          ) : (
-                            <>
-                              <div className="w-1.5 h-1.5 bg-blue-500 dark:bg-blue-400 rounded-full animate-spin"></div>
-                              <span className="hidden sm:inline">Checking</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      // Multiple webhooks - show as dropdown selector with status on same row
-                      <div className="space-y-1">
-                        <div className="flex items-center">
-                          <button
-                            onClick={() => setIsWebhookSelectorOpen(!isWebhookSelectorOpen)}
-                            className={cn(
-                              "flex items-center text-left text-xs px-2 py-1 rounded transition-colors mr-2",
-                              "hover:bg-slate-200 dark:hover:bg-slate-700 touch-manipulation",
-                              "focus:outline-none focus:ring-1 focus:ring-blue-500",
-                              isWebhookSelectorOpen && "bg-slate-200 dark:bg-slate-700"
-                            )}
-                            style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}
-                          >
-                            <Webhook className="w-3 h-3 mr-1 flex-shrink-0" />
-                            <span className="flex-1 truncate">{activeWebhook?.name || 'Select Webhook'}</span>
-                            <svg 
-                              className={cn("w-3 h-3 ml-1 transition-transform flex-shrink-0", isWebhookSelectorOpen && "rotate-180")} 
-                              fill="none" 
-                              stroke="currentColor" 
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-
-                          {/* Connection status pill for multiple webhooks - same row */}
-                          <div className={cn(
-                            "flex items-center space-x-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all duration-300 flex-shrink-0",
-                            isOnline === true
-                              ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 shadow-emerald-200/50 dark:shadow-emerald-800/50 shadow-sm" 
-                              : isOnline === false
-                              ? "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 shadow-red-200/50 dark:shadow-red-800/50 shadow-sm"
-                              : "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shadow-blue-200/50 dark:shadow-blue-800/50 shadow-sm"
-                          )}>
-                            {isOnline === true ? (
-                              <>
-                                <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse"></div>
-                                <span className="hidden sm:inline">Connected</span>
-                              </>
-                            ) : isOnline === false ? (
-                              <>
-                                <div className="w-1.5 h-1.5 bg-red-500 dark:bg-red-400 rounded-full"></div>
-                                <span className="hidden sm:inline">Offline</span>
-                              </>
-                            ) : (
-                              <>
-                                <div className="w-1.5 h-1.5 bg-blue-500 dark:bg-blue-400 rounded-full animate-spin"></div>
-                                <span className="hidden sm:inline">Checking</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Dropdown Menu */}
-                        {isWebhookSelectorOpen && (
-                          <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-lg z-[70] max-h-48 overflow-y-auto">
-                            {webhooks.map((webhook) => (
-                              <button
-                                key={webhook.id}
-                                onClick={() => {
-                                  setActiveWebhook(webhook.id);
-                                  setIsWebhookSelectorOpen(false);
-                                }}
-                                className={cn(
-                                  "w-full text-left px-3 py-2 text-xs transition-colors touch-manipulation",
-                                  "hover:bg-slate-100 dark:hover:bg-slate-700",
-                                  "active:bg-slate-200 dark:active:bg-slate-600",
-                                  "first:rounded-t-lg last:rounded-b-lg",
-                                  "flex items-center",
-                                  webhook.id === activeWebhook?.id && "bg-blue-600 text-white"
-                                )}
-                                style={{ 
-                                  color: webhook.id === activeWebhook?.id ? '#ffffff' : (theme === 'light' ? '#374151' : '#f1f5f9')
-                                }}
-                              >
-                                <Webhook className="w-3 h-3 mr-2 flex-shrink-0" />
-                                <span className="truncate">{webhook.name}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
+              <div className="flex items-center space-x-3">
+                <Image
+                  src="/logo.png"
+                  alt="Webn8 Logo"
+                  width={28}
+                  height={28}
+                  className="flex-shrink-0 w-7 h-7 md:w-6 md:h-6"
+                />
+                <h2 className="text-xl md:text-lg font-semibold truncate" style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}>
+                  ChatAI
+                </h2>
               </div>
             )}
             
-            <div className={cn(
-              "flex items-center space-x-2 md:space-x-1",
-              isCollapsed ? "mt-2" : "-mt-8"
-            )}>
-              {!isCollapsed && (
-                <>
-                  <button
-                    onClick={handleNewChat}
-                    disabled={!activeWebhook}
-                    className={cn(
-                      'p-3 md:p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center',
-                      'hover:bg-slate-200 dark:hover:bg-slate-800 active:bg-slate-300 dark:active:bg-slate-700',
-                      'disabled:opacity-50 disabled:cursor-not-allowed',
-                    )}
-                    title="New Chat"
-                  >
-                    <Plus className="w-5 h-5 md:w-4 md:h-4" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
-                  </button>
-                  <button
-                    onClick={handleCleanupEmptyChats}
-                    disabled={!activeWebhook}
-                    className={cn(
-                      'p-3 md:p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center',
-                      'hover:bg-slate-200 dark:hover:bg-slate-800 active:bg-slate-300 dark:active:bg-slate-700',
-                      'disabled:opacity-50 disabled:cursor-not-allowed'
-                    )}
-                    title="Cleanup Empty Chats"
-                  >
-                    <Eraser className="w-5 h-5 md:w-4 md:h-4" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
-                  </button>
-                  <button
-                    onClick={onConfigOpen}
-                    className="p-3 md:p-2 rounded-lg transition-colors hover:bg-slate-200 dark:hover:bg-slate-800 active:bg-slate-300 dark:active:bg-slate-700 min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center"
-                    title="Settings"
-                  >
-                    <Settings className="w-5 h-5 md:w-4 md:h-4" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
-                  </button>
-                </>
+            {/* Hide collapse button on mobile since we have close button */}
+            <button
+              onClick={() => {
+                const newCollapsed = !isCollapsed;
+                setIsCollapsed(newCollapsed);
+                onCollapsedChange?.(newCollapsed);
+              }}
+              className={cn(
+                'p-2 rounded-lg transition-colors hover:bg-slate-200 dark:hover:bg-slate-800 hidden md:block'
               )}
-              {/* Hide collapse button on mobile since we have close button */}
-              <button
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                className={cn(
-                  'p-2 rounded-lg transition-colors hover:bg-slate-200 dark:hover:bg-slate-800 hidden md:block'
-                )}
-                title={isCollapsed ? 'Expand' : 'Collapse'}
-              >
-                {isCollapsed ? (
-                  <ChevronRight className="w-4 h-4" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
-                ) : (
-                  <ChevronLeft className="w-4 h-4" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
-                )}
-              </button>
-            </div>
+              title={isCollapsed ? 'Expand' : 'Collapse'}
+            >
+              {isCollapsed ? (
+                <ChevronRight className="w-4 h-4" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
+              ) : (
+                <ChevronLeft className="w-4 h-4" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Chat List */}
-        <div className="flex-1 overflow-y-auto">
-          {!activeWebhook && !isCollapsed && (
-            <div className="p-6 md:p-4 text-center">
-              <Globe className="w-12 h-12 md:w-8 md:h-8 mx-auto mb-4 md:mb-2 opacity-50" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
-              <p className="text-base md:text-sm mb-4 md:mb-2" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>
-                No webhook configured
-              </p>
-              <button
-                onClick={onConfigOpen}
-                className="px-6 py-3 md:px-3 md:py-1 text-sm md:text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 active:bg-blue-700 transition-colors min-h-[44px] md:min-h-auto"
-              >
-                Setup Webhook
-              </button>
+        {/* Figma-Style New Chat Button - Prominent at Top */}
+        {!isCollapsed && (
+          <div className="flex-shrink-0 p-6 md:p-4">
+            <button
+              onClick={handleNewChat}
+              disabled={!activeWebhook}
+              className={cn(
+                'w-full flex items-center justify-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200',
+                'hover:shadow-md active:scale-95 touch-manipulation',
+                theme === 'light'
+                  ? 'bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-700'
+                  : 'bg-slate-800 border border-slate-700 hover:bg-slate-700 hover:border-slate-600 text-slate-200',
+                'disabled:opacity-50 disabled:cursor-not-allowed'
+              )}
+              title="Start New Chat"
+            >
+              <Plus className={cn(
+                'w-5 h-5',
+                theme === 'light' ? 'text-slate-700' : 'text-slate-200'
+              )} />
+              <span className={cn(
+                'text-sm font-medium',
+                theme === 'light' ? 'text-slate-700' : 'text-slate-200'
+              )}>
+                New chat
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* Figma-Style Chat List */}
+        <div className="flex-1 overflow-y-auto max-h-[75vh]">
+          {/* Recent chats header - Always show as per Figma design */}
+          {!isCollapsed && (
+            <div className="px-6 md:px-4 py-3 md:py-2 border-slate-200 dark:border-slate-700">
+              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                Recent chats
+              </h3>
             </div>
           )}
 
-          {activeWebhook && chatsForActiveWebhook.length === 0 && !isCollapsed && (
+          {/* Show all chats (simplified from webhook filtering) */}
+          {chatsForActiveWebhook.length === 0 && !isCollapsed && (
             <div className="p-6 md:p-4 text-center">
-              <MessageSquare className="w-12 h-12 md:w-8 md:h-8 mx-auto mb-4 md:mb-2 opacity-50" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
-              <p className="text-base md:text-sm mb-4 md:mb-2" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>
+              <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-50" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
+              <p className="text-sm mb-3" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>
                 No chats yet
               </p>
-              <button
-                onClick={handleNewChat}
-                className="px-6 py-3 md:px-3 md:py-1 text-sm md:text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 active:bg-blue-700 transition-colors min-h-[44px] md:min-h-auto"
-              >
-                Start First Chat
-              </button>
+              <p className="text-xs" style={{ color: theme === 'light' ? '#94a3b8' : '#64748b' }}>
+                Start a new conversation above
+              </p>
             </div>
           )}
 
@@ -493,9 +368,17 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
             <div
               key={chat.id}
               className={cn(
-                'relative group cursor-pointer border-b border-slate-200 dark:border-slate-800 last:border-b-0',
-                'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors',
-                chat.id === activeChat?.id && 'bg-blue-50 dark:bg-blue-900/20 border-r-2 border-r-blue-500'
+                'relative group cursor-pointer border rounded-lg m-2 transition-all duration-200',
+                'hover:shadow-md hover:-translate-y-0.5 active:scale-95 touch-manipulation',
+                'border-slate-200 dark:border-slate-700',
+                chat.id === activeChat?.id 
+                  ? '' 
+                  : 'hover:bg-cyan-600 hover:border-cyan-600 dark:hover:bg-cyan-600 dark:hover:border-cyan-600',
+                chat.id === activeChat?.id 
+                  ? theme === 'light' 
+                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 border-blue-500 border-r-4 border-r-cyan-500' 
+                    : 'bg-gradient-to-br from-indigo-500 to-purple-600 border-indigo-500 border-r-4 border-r-cyan-500'
+                  : 'bg-white dark:bg-slate-800'
               )}
               onClick={() => handleChatSelect(chat.id)}
             >
@@ -504,7 +387,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                   <div className="flex justify-center">
                     <MessageSquare className="w-5 h-5" style={{ 
                       color: chat.id === activeChat?.id 
-                        ? '#3b82f6' 
+                        ? '#ffffff' 
                         : theme === 'light' ? '#6b7280' : '#94a3b8' 
                     }} />
                   </div>
@@ -525,19 +408,30 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                           className="w-full text-sm font-medium bg-transparent border-none outline-none text-[#374151] dark:text-[#ffffff]"
                         />
                       ) : (
-                        <h3 className="text-sm font-medium truncate" style={{ 
-                          color: chat.id === activeChat?.id 
-                            ? '#3b82f6' 
-                            : theme === 'light' ? '#374151' : '#e2e8f0' 
-                        }}>
+                        <h3 className={cn(
+                          "text-sm font-medium truncate transition-colors",
+                          chat.id === activeChat?.id 
+                            ? 'text-white' 
+                            : 'text-slate-700 dark:text-slate-200 group-hover:text-white dark:group-hover:text-white'
+                        )}>
                           {chat.name}
                         </h3>
                       )}
                       <div className="flex items-center justify-between mt-1">
-                        <span className="text-xs" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>
+                        <span className={cn(
+                          "text-xs transition-colors",
+                          chat.id === activeChat?.id 
+                            ? 'text-cyan-100' 
+                            : 'text-slate-500 dark:text-slate-400 group-hover:text-cyan-100'
+                        )}>
                           {chat.messageCount} messages
                         </span>
-                        <span className="text-xs" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>
+                        <span className={cn(
+                          "text-xs transition-colors",
+                          chat.id === activeChat?.id 
+                            ? 'text-cyan-100' 
+                            : 'text-slate-500 dark:text-slate-400 group-hover:text-cyan-100'
+                        )}>
                           {formatTimeAgo(chat.lastActivity)}
                         </span>
                       </div>
@@ -555,8 +449,9 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                           </button>
                           
                           <div className={cn(
-                            "absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-300 dark:border-slate-700 py-1 z-[60] min-w-[120px]",
-                            openChatMenu === chat.id ? "flex flex-col" : "hidden md:group-hover:flex md:flex-col"
+                            "fixed bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-300 dark:border-slate-700 py-1 z-[9999] min-w-[120px]",
+                            "left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2",
+                            openChatMenu === chat.id ? "flex flex-col" : "hidden"
                           )}>
                             <button
                               onClick={(e) => {
@@ -564,10 +459,9 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                                 handleEditChat(chat.id, chat.name);
                                 closeChatMenu();
                               }}
-                              className="px-4 py-3 md:px-3 md:py-2 text-sm md:text-xs text-left flex items-center transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 active:bg-slate-200 dark:active:bg-slate-600 min-h-[44px] md:min-h-auto"
-                              style={{ color: theme === 'light' ? '#f1f5f9' : '#94a3b8' }}
+                              className="px-4 py-3 md:px-3 md:py-2 text-sm md:text-xs text-left flex items-center transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 active:bg-slate-200 dark:active:bg-slate-600 min-h-[44px] md:min-h-auto text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                             >
-                              <Edit3 className="w-4 h-4 md:w-3 md:h-3 mr-3 md:mr-2 flex-shrink-0" style={{ color: theme === 'light' ? '#f1f5f9' : '#94a3b8' }} />
+                              <Edit3 className="w-4 h-4 md:w-3 md:h-3 mr-3 md:mr-2 flex-shrink-0 text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-white" />
                               Rename
                             </button>
                             <button
@@ -576,7 +470,7 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
                                 setShowDeleteModal(chat.id);
                                 closeChatMenu();
                               }}
-                              className="px-4 py-3 md:px-3 md:py-2 text-sm md:text-xs text-left hover:bg-red-50 dark:hover:bg-red-900/50 active:bg-red-100 dark:active:bg-red-900/70 flex items-center text-red-600 dark:text-red-400 transition-colors min-h-[44px] md:min-h-auto"
+                              className="px-4 py-3 md:px-3 md:py-2 text-sm md:text-xs text-left hover:bg-red-50 dark:hover:bg-red-900/50 active:bg-red-100 dark:active:bg-red-900/70 flex items-center text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors min-h-[44px] md:min-h-auto"
                             >
                               <Trash2 className="w-4 h-4 md:w-3 md:h-3 mr-3 md:mr-2 flex-shrink-0" />
                               Delete
@@ -592,113 +486,63 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
           ))}
         </div>
 
-
-        {/* User Profile Section */}
-        <div className="flex-shrink-0 border-t border-slate-300 dark:border-slate-700">
-          {isCollapsed ? (
-            <div className="p-3 flex justify-center">
-              <div className="relative">
-                <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center shadow-lg",
-                  user?.photoURL && !user.isAnonymous 
-                    ? "border-2 border-slate-500 hover:border-slate-400 transition-colors"
-                    : "bg-gradient-to-br from-emerald-400 to-emerald-600"
-                )}>
-                  {user?.photoURL && !user.isAnonymous ? (
-                    <img
-                      src={user.photoURL}
-                      alt={user.displayName || 'User'}
-                      className="w-8 h-8 rounded-full"
-                    />
-                  ) : user?.isAnonymous ? (
-                    <span className="text-white text-xs font-medium">👤</span>
-                  ) : (
-                    <User className="w-4 h-4 text-white" />
-                  )}
-                </div>
-                
-                {/* Online indicator for Google users */}
-                {user && !user.isAnonymous && (
-                  <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-slate-800 shadow-sm"></div>
+        {/* Bottom Actions Section - Figma Design */}
+        {!isCollapsed && (
+          <div className="flex-shrink-0 border-slate-300 dark:border-slate-700 p-4 space-y-2">
+            {/* Settings Button - Full width on desktop, flex on mobile */}
+            <div className="md:block flex items-center justify-between space-x-2 md:space-x-0">
+              <button
+                onClick={onConfigOpen}
+                className={cn(
+                  "flex-1 md:w-full flex items-center space-x-3 px-3 py-2 text-sm border rounded-lg transition-all duration-200 text-left",
+                  "hover:shadow-md active:scale-95 touch-manipulation",
+                  theme === 'light'
+                    ? 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-700'
+                    : 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-slate-600 text-slate-200'
                 )}
+              >
+                <Settings className="w-4 h-4 flex-shrink-0" />
+                <span>Settings</span>
+              </button>
+              
+              {/* Theme Toggle - Mobile version */}
+              <div className="flex-shrink-0 md:hidden">
+                <ThemeToggle className="scale-90" />
               </div>
             </div>
-          ) : (
-            <div className="p-6 md:p-4">
-              <div className="flex items-center space-x-4 md:space-x-3">
-                <div className="relative flex-shrink-0">
-                  <div className={cn(
-                    "w-12 h-12 md:w-10 md:h-10 rounded-full flex items-center justify-center shadow-lg",
-                    user?.photoURL && !user.isAnonymous 
-                      ? "border-2 border-slate-500 hover:border-slate-400 transition-colors"
-                      : "bg-gradient-to-br from-emerald-400 to-emerald-600"
-                  )}>
-                    {user?.photoURL && !user.isAnonymous ? (
-                      <img
-                        src={user.photoURL}
-                        alt={user.displayName || 'User'}
-                        className="w-12 h-12 md:w-10 md:h-10 rounded-full"
-                      />
-                    ) : user?.isAnonymous ? (
-                      <span className="text-white text-base md:text-sm font-medium">👤</span>
-                    ) : (
-                      <User className="w-6 h-6 md:w-5 md:h-5 text-white" />
-                    )}
-                  </div>
-                  
-                  {/* Online indicator for Google users */}
-                  {user && !user.isAnonymous && (
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-800 shadow-sm"></div>
-                  )}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <p className="text-base md:text-sm font-medium truncate" style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}>
-                    {user?.displayName || userProfile?.profile?.name || 'User'}
-                  </p>
-                  {user?.email && (
-                    <p className="text-sm md:text-xs truncate" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>
-                      {user.email}
-                    </p>
-                  )}
-                </div>
-                
-                <button
-                  onClick={handleSignOutClick}
-                  className="p-3 md:p-2 rounded-lg transition-colors hover:bg-slate-200 dark:hover:bg-slate-800 active:bg-slate-300 dark:active:bg-slate-700 flex-shrink-0 min-h-[44px] min-w-[44px] md:min-h-auto md:min-w-auto flex items-center justify-center"
-                  title="Sign Out"
-                >
-                  <LogOut className="w-5 h-5 md:w-4 md:h-4" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
 
-        {/* Mobile Close Button - Bottom Position */}
-        {isMobileOpen && (
-          <div 
-            className="flex-shrink-0 p-6 border-t border-slate-300 dark:border-slate-700 md:hidden flex justify-center"
-            style={{
-              backgroundColor: theme === 'light' ? '#f8fafc' : '#0f172a'
-            }}
-          >
+            {/* Help Button */}
             <button
-              onClick={onMobileClose}
+              onClick={handleHelpClick}
               className={cn(
-                "px-8 py-4 rounded-full border-2 border-slate-400 dark:border-slate-400 transition-all duration-200",
-                "bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700",
-                "hover:border-slate-500 dark:hover:border-slate-300",
-                "active:scale-95 active:bg-slate-200 dark:active:bg-slate-600",
-                "shadow-lg hover:shadow-xl touch-manipulation flex items-center space-x-3"
+                "w-full flex items-center space-x-3 px-3 py-2 text-sm border rounded-lg transition-all duration-200 text-left",
+                "hover:shadow-md active:scale-95 touch-manipulation",
+                theme === 'light'
+                  ? 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-700'
+                  : 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-slate-600 text-slate-200'
               )}
-              title="Close Menu"
             >
-              <X className="w-6 h-6" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }} />
-              <span className="text-base font-medium" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>Close</span>
+              <HelpCircle className="w-4 h-4 flex-shrink-0" />
+              <span>Help</span>
             </button>
+
+            {/* Upgrade to PRO Button */}
+            {/* <button
+              onClick={handleUpgradeClick}
+              className={cn(
+                "w-full flex items-center justify-center space-x-2 px-4 py-3 text-sm font-medium rounded-lg transition-all",
+                "bg-gradient-to-r from-purple-600 to-blue-600 text-white",
+                "hover:from-purple-700 hover:to-blue-700",
+                "active:scale-95 touch-manipulation shadow-lg"
+              )}
+            >
+              <Crown className="w-4 h-4 flex-shrink-0" />
+              <span>Upgrade to PRO</span>
+            </button> */}
           </div>
         )}
+
+
 
       </div>
 
@@ -731,34 +575,6 @@ export function FirebaseChatSidebar({ className, onConfigOpen, isMobileOpen = fa
         </div>
       </Modal>
 
-      {/* Sign Out Confirmation Modal */}
-      <Modal
-        isOpen={showSignOutModal}
-        onClose={() => setShowSignOutModal(false)}
-        title="Sign Out"
-        className="max-w-[95vw] w-full sm:max-w-md"
-      >
-        <div className="space-y-4 p-1">
-          <p className="text-sm" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}>
-            Are you sure you want to sign out? You will need to sign in again to access your chats and data.
-          </p>
-          <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
-            <button
-              onClick={() => setShowSignOutModal(false)}
-              className="w-full sm:w-auto px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirmSignOut}
-              className="w-full sm:w-auto px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </Modal>
     </>
   );
 }

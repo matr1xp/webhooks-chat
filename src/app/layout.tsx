@@ -4,11 +4,12 @@ import { ThemeProvider } from '@/contexts/ThemeContext'
 import { ConfigProvider } from '@/contexts/ConfigContext'
 import { ReduxProvider } from '@/providers/ReduxProvider'
 import { FirebaseProvider } from '@/contexts/FirebaseContext'
+import { PhotoCacheInitializer } from '@/components/PhotoCacheInitializer'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: 'WebhookIQ',
+  title: 'ChatAI',
   description: 'Chat interface for n8n webhook integration',
   icons: {
     icon: '/favicon.ico',
@@ -27,6 +28,7 @@ export default function RootLayout({
           <ReduxProvider>
             <ThemeProvider>
               <ConfigProvider>
+                <PhotoCacheInitializer />
                 <div className="min-h-screen">
                   {children}
                 </div>

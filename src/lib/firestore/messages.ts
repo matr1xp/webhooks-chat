@@ -177,6 +177,7 @@ export const convertFirestoreMessageToMessage = (
     userId: firestoreMessage.userId,
     status: firestoreMessage.status,
     isBot: firestoreMessage.isBot,
+    source: firestoreMessage.source,
     metadata: firestoreMessage.metadata,
     fileData: (firestoreMessage as any).fileData,
   };
@@ -204,6 +205,11 @@ export const convertMessageToFirestore = (
     status: message.status || 'sending',
     isBot: message.isBot || false,
   };
+  
+  // Only add source if it's defined and not null
+  if (message.source !== undefined && message.source !== null) {
+    firestoreMessage.source = message.source;
+  }
   
   // Only add metadata if it's defined and not null
   if (message.metadata !== undefined && message.metadata !== null) {

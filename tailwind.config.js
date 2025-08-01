@@ -8,9 +8,9 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        'gail-rock': ['Gail Rock', 'sans-serif'],
+        'soliden': ['Soliden Regular', 'sans-serif'],
+        'soliden-condensed': ['Soliden Condensed', 'sans-serif'],
         'monoline': ['Monoline', 'sans-serif'],
-        'nordhead': ['Nordhead Typeface', 'sans-serif'],
       },
     },
   },

@@ -130,4 +130,4 @@ To verify the privacy fix works:
 - **Privacy Mode**: Optional setting for extra privacy clearing
 - **Data Retention Policies**: Configurable data retention periods
 
-This privacy fix ensures that WebhookIQ meets enterprise security standards and provides users with confidence that their chat data remains private and secure! 🔒
+This privacy fix ensures that ChatAI meets enterprise security standards and provides users with confidence that their chat data remains private and secure! 🔒

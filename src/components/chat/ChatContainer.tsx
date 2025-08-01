@@ -1,27 +1,32 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { MessageList } from './MessageList';
-import { MessageInput } from './MessageInput';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useConfig } from '@/contexts/ConfigContext';
-import { useChatStore } from '@/hooks/useReduxChat';
-import { useFirebaseChat } from '@/hooks/useFirebaseChat';
-import { useFirebase } from '@/contexts/FirebaseContext';
-import { webhookClient } from '@/lib/webhook-client';
-import { WebhookPayload } from '@/types/chat';
+import { AlertCircle, Bell, Menu, Search, Share } from 'lucide-react';
 import { generateSessionId, generateUserId, sanitizeInput } from '@/lib/utils';
+import { useEffect, useMemo, useState } from 'react';
+
+import { MessageInput } from './MessageInput';
+import { MessageList } from './MessageList';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { UserProfileDropdown } from '@/components/ui/UserProfileDropdown';
+import { WebhookPayload } from '@/types/chat';
+import { WelcomeScreen } from './WelcomeScreen';
 import { cn } from '@/lib/utils';
-import { AlertCircle, Wifi, WifiOff, RefreshCw, Menu } from 'lucide-react';
+import { useChatStore } from '@/hooks/useReduxChat';
+import { useConfig } from '@/contexts/ConfigContext';
 import { useFileCache } from '@/hooks/useFileCache';
+import { useFirebase } from '@/contexts/FirebaseContext';
+import { useFirebaseChat } from '@/hooks/useFirebaseChat';
+import { useTheme } from '@/contexts/ThemeContext';
+import { webhookClient } from '@/lib/webhook-client';
 
 interface ChatContainerProps {
   className?: string;
   onMobileSidebarOpen?: () => void;
+  isSidebarCollapsed?: boolean;
+  isMobileSidebarOpen?: boolean;
 }
 
-export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerProps) {
+export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollapsed = false, isMobileSidebarOpen = false }: ChatContainerProps) {
   const { theme } = useTheme();
   const { store } = useConfig();
   
@@ -81,9 +86,31 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
 
 
   const [userId] = useState(() => generateUserId());
+  const [isOnline, setIsOnline] = useState<boolean | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [lastBotSource, setLastBotSource] = useState<{source: string; timestamp: number} | null>(null);
   
   // Redux file cache for persistent Base64 data storage
   const { cache: fileDataCache, setFileCacheData, cleanupCache } = useFileCache();
+
+  // Helper function to check if bot source is still valid (within configured timeout)
+  const getValidDestination = (): string | null => {
+    if (!lastBotSource) return null;
+    
+    const now = Date.now();
+    // Get timeout from environment variable, default to 5 minutes
+    const timeoutMinutes = parseInt(process.env.NEXT_PUBLIC_DESTINATION_TIMEOUT || '5');
+    const timeoutInMs = timeoutMinutes * 60 * 1000; // Convert minutes to milliseconds
+    const timeElapsed = now - lastBotSource.timestamp;
+    
+    if (timeElapsed <= timeoutInMs) {
+      return lastBotSource.source;
+    }
+    
+    // Clear expired bot source
+    setLastBotSource(null);
+    return null;
+  };
 
   // Get active webhook and chat - use Firebase or Redux based on feature flag
   const rawActiveWebhook = USE_FIREBASE ? firebase.activeWebhook : store?.getActiveWebhook();
@@ -148,20 +175,122 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
     }
   }, [messages, cleanupCache]);
 
+  // Check webhook health when active webhook changes
+  useEffect(() => {
+    if (activeWebhook?.id) {
+      if (USE_FIREBASE) {
+        // Convert to FirestoreWebhook format for health check
+        const firestoreWebhook = {
+          id: activeWebhook.id,
+          name: activeWebhook.name,
+          url: activeWebhook.url,
+          secret: (activeWebhook as any).apiSecret || (activeWebhook as any).secret,
+          isActive: activeWebhook.isActive,
+          createdAt: (activeWebhook as any).createdAt
+        };
+        firebase.checkWebhookHealth(firestoreWebhook)
+          .then(setIsOnline)
+          .catch(() => setIsOnline(false));
+      } else {
+        // For Redux mode, you could implement similar health check here
+        setIsOnline(null);
+      }
+    } else {
+      setIsOnline(false);
+    }
+  }, [activeWebhook?.id, USE_FIREBASE, firebase]);
+
+  // Detect if we're on mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Determine if connection pill should be shown
+  const shouldShowConnectionPill = useMemo(() => {
+    if (!activeWebhook) return false;
+    
+    if (isMobile) {
+      // Mobile: show when sidebar overlay is not open
+      return !isMobileSidebarOpen;
+    } else {
+      // Desktop: show when sidebar is collapsed
+      return isSidebarCollapsed;
+    }
+  }, [activeWebhook, isMobile, isSidebarCollapsed, isMobileSidebarOpen]);
+
+  // Determine if we should show welcome screen
+  const shouldShowWelcomeScreen = useMemo(() => {
+    return !activeChat || messages.length === 0;
+  }, [activeChat, messages.length]);
+
+  // Mock header action handlers
+  const handleSearchClick = () => {
+    console.log('Search clicked');
+  };
+
+  const handleShareClick = () => {
+    console.log('Share clicked');
+  };
+
+  const handleNotificationsClick = () => {
+    console.log('Notifications clicked');
+  };
 
   const handleSendMessage = async (
     content: string, 
     type: 'text' | 'file' | 'image' = 'text',
     fileData?: { name: string; size: number; type: string; data: string }
   ) => {
-    // Check if we have an active webhook and chat
-    if (!activeWebhook || !activeChat) {
-      setError('No active webhook or chat configured. Please configure a webhook and select a chat.');
+    // Check if we have an active webhook
+    if (!activeWebhook) {
+      setError('No active webhook configured. Please configure a webhook first.');
+      return;
+    }
+
+    // Check if webhook is healthy (connected)
+    if (isOnline === false) {
+      setError('Webhook is offline. Please check your webhook configuration and try again.');
+      return;
+    }
+
+    // If webhook status is still checking, wait a moment and check again
+    if (isOnline === null) {
+      setError('Checking webhook connection. Please wait and try again.');
+      return;
+    }
+
+    // Auto-create a new chat if none is selected (for welcome screen suggestions)
+    let currentChat = activeChat;
+    if (!currentChat && USE_FIREBASE) {
+      try {
+        setError(null);
+        const newChat = await firebase.createNewChat(
+          activeWebhook.id, 
+          generateChatName(content)
+        );
+        firebase.setActiveChat(newChat.id);
+        currentChat = newChat;
+      } catch (error) {
+        console.error('Failed to create new chat:', error);
+        setError('Failed to create new chat. Please try again.');
+        return;
+      }
+    }
+
+    // Check if we now have an active chat
+    if (!currentChat) {
+      setError('No active chat configured. Please select or create a chat.');
       return;
     }
     
     // Additional validation for Firebase mode
-    if (USE_FIREBASE && (!activeChat.id || activeChat.id.trim() === '')) {
+    if (USE_FIREBASE && (!currentChat.id || currentChat.id.trim() === '')) {
       setError('Active chat has invalid ID. Please refresh and try again.');
       return;
     }
@@ -177,7 +306,7 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
       }
 
       // Add message to local state immediately (optimistic update)
-      const sessionId = USE_FIREBASE ? activeChat.id : (activeChat as any).sessionId;
+      const sessionId = USE_FIREBASE ? currentChat.id : (currentChat as any).sessionId;
       
       // Create message payload for Firestore (without large Base64 data)
       const messagePayload = {
@@ -208,15 +337,15 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
       }
 
       // Auto-rename chat if this is the first user message
-      if (USE_FIREBASE && activeChat && type === 'text') {
+      if (USE_FIREBASE && currentChat && type === 'text') {
         // Check if this is the first user message by counting existing user messages
         const userMessages = messages.filter(msg => !msg.isBot);
         
         // If no user messages existed before this one, and the chat has a default name, rename it
-        if (userMessages.length === 0 && activeChat.name && activeChat.name.startsWith('Chat ')) {
+        if (userMessages.length === 0 && currentChat.name && currentChat.name.startsWith('Chat ')) {
           try {
             const newChatName = generateChatName(sanitizedContent);
-            await firebase.updateChat(activeChat.id, newChatName);
+            await firebase.updateChat(currentChat.id, newChatName);
           } catch (error) {
             console.warn('Failed to auto-rename chat:', error);
             // Don't block the message sending if renaming fails
@@ -227,6 +356,9 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
       // Message count will be updated automatically by useEffect
 
       setLoading(true);
+
+      // Check if we have a valid destination (within 5 minutes)
+      const validDestination = getValidDestination();
 
       // Prepare webhook payload with full file data for cloud run processing
       const payload: WebhookPayload = {
@@ -240,6 +372,8 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
         message: {
           type,
           content: sanitizedContent,
+          // Include destination field if we have a valid bot source (within 5 minutes)
+          ...(validDestination && { destination: validDestination }),
           // Include FULL file data (with Base64) for cloud run function processing
           ...(fileData && { file: fileData })
         },
@@ -249,7 +383,13 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
           source: 'web' as const,
         },
       };
+
       
+
+      // Clear the last bot source after using it to prevent it from being used in future messages
+      if (validDestination) {
+        setLastBotSource(null);
+      }
 
       // Send to webhook directly - no queueing
       try {
@@ -264,7 +404,8 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
               // Use Firebase bot message method
               await firebase.addBotMessage(
                 response.botMessage.content,
-                response.botMessage.metadata
+                response.botMessage.metadata,
+                response.botMessage.source
               );
             } else {
               // Use Redux method
@@ -274,10 +415,19 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
                 type: response.botMessage.type || 'text',
                 content: response.botMessage.content,
                 isBot: true,
+                source: response.botMessage.source,
                 metadata: response.botMessage.metadata,
               });
               // Bot messages are always delivered
               updateMessageStatus(botMessage.id, 'delivered');
+            }
+            
+            // Store bot source for next user message destination (with timestamp for timeout expiry)
+            if (response.botMessage.source) {
+              setLastBotSource({
+                source: response.botMessage.source,
+                timestamp: Date.now()
+              });
             }
             
             // Message count will be updated automatically by useEffect
@@ -310,29 +460,26 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
   // Memoize autoFocus to prevent unnecessary re-renders
   const shouldAutoFocus = useMemo(() => 
     !!(activeWebhook && activeChat && !isLoading), 
-    [activeWebhook?.id, activeChat?.id, isLoading]
+    [activeWebhook, activeChat, isLoading]
   );
 
   try {
     return (
     <div className={cn(
-      'h-screen w-full flex flex-col relative overflow-hidden chat-container',
-      // Mobile optimizations
-      'touch-manipulation',
+      'h-screen w-full flex flex-col relative chat-container',
+      // Mobile: allow overflow for fixed input, desktop: hidden overflow
+      'overflow-visible md:overflow-hidden',
       className
     )}>
-      {/* Subtle background pattern */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDEyNywgMTI3LCAxMjcsIDAuMDMpIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-40 dark:opacity-20"></div>
-      
-      {/* Header - Modern glassmorphism design, fixed on mobile */}
-      <div className="flex-shrink-0 border-b shadow-sm z-30 relative chat-header chat-header-top">
-        <div className="p-4 sm:p-6">
+      {/* Header - Mobile-optimized design */}
+      <div className="flex-shrink-0 border-[#e2e8f0] dark:border-[#374151] chat-header z-30 relative">
+        <div className="p-3 md:p-4 lg:p-6">
           <div className="flex items-center justify-between">
             {/* Mobile Sidebar Button */}
             <button
               onClick={onMobileSidebarOpen}
               className={cn(
-                'p-2 rounded-lg transition-colors touch-manipulation md:hidden mr-3',
+                'p-2 rounded-lg transition-colors touch-manipulation md:hidden mr-2',
                 'hover:bg-slate-100 dark:hover:bg-slate-800',
                 'active:scale-95 active:bg-slate-200 dark:active:bg-slate-700'
               )}
@@ -342,18 +489,60 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
             </button>
 
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg sm:text-xl font-bold truncate" style={{ color: theme === 'light' ? '#000000' : '#f1f5f9' }}>
-                {activeChat?.name || 'Select a Chat'}
+              <h1 className="text-base md:text-lg lg:text-xl font-bold truncate" style={{ color: theme === 'light' ? '#111827' : '#f1f5f9' }}>
+                {activeChat?.name || 'Conversation title goes here'}
               </h1>
-              <p className="text-xs sm:text-sm font-medium" style={{ color: theme === 'light' ? '#374151' : '#94a3b8' }}>
-                {activeWebhook ? `${activeWebhook.name} • ${messages.length} messages` : 'No webhook configured'}
+              <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5 hidden sm:block">
+                {activeChat && messages.length > 0 
+                  ? `Started ${new Date().toLocaleDateString()}`
+                  : 'Select a chat or start a new conversation'
+                }
               </p>
             </div>
             
-            {/* Right side controls */}
-            <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
-              {/* Theme Toggle */}
-              <ThemeToggle />
+            {/* Header Actions - Right side - Hide most on mobile */}
+            <div className="flex items-center space-x-1 md:space-x-2 lg:space-x-3 flex-shrink-0">
+              {/* Mock Action Icons - Hidden on mobile except user profile */}
+              <button
+                onClick={handleSearchClick}
+                className={cn(
+                  'p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800',
+                  'active:scale-95 touch-manipulation hidden md:block'
+                )}
+                title="Search"
+              >
+                <Search className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+              </button>
+              
+              <button
+                onClick={handleShareClick}
+                className={cn(
+                  'p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800',
+                  'active:scale-95 touch-manipulation hidden md:block'
+                )}
+                title="Share"
+              >
+                <Share className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+              </button>
+              
+              <button
+                onClick={handleNotificationsClick}
+                className={cn(
+                  'p-2 rounded-lg transition-colors hover:bg-slate-100 dark:hover:bg-slate-800',
+                  'active:scale-95 touch-manipulation hidden md:block'
+                )}
+                title="Notifications"
+              >
+                <Bell className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+              </button>
+
+              {/* Theme Toggle - Hidden on mobile */}
+              <div className="hidden md:block">
+                <ThemeToggle />
+              </div>
+              
+              {/* User Profile Dropdown - Always visible but simplified on mobile */}
+              <UserProfileDropdown />
             </div>
           </div>
         </div>
@@ -381,32 +570,46 @@ export function ChatContainer({ className, onMobileSidebarOpen }: ChatContainerP
         </div>
       )}
 
-      {/* Scrollable Messages Area with improved styling, accounting for fixed header and input on mobile */}
+      {/* Main Content Area - Welcome Screen or Messages */}
       <div className={cn(
         "flex-1 overflow-y-auto scrollbar-thin relative z-10 chat-messages-area",
-        "pt-20 md:pt-0 pb-24 md:pb-0", // Account for fixed header and input on mobile
-        error && "pt-32 md:pt-0" // Additional padding when error banner is shown
+        // Mobile: leave space for fixed input at bottom
+        "pb-24 md:pb-0",
+        error && "pt-8" // Additional padding when error banner is shown
       )}>
-        <MessageList 
-          messages={messages} 
-          isLoading={isLoading}
-          className="min-h-full px-4 py-6"
-          fileDataCache={fileDataCache}
-        />
+        {shouldShowWelcomeScreen ? (
+          <WelcomeScreen 
+            onSuggestionClick={handleSendMessage}
+            className="min-h-full"
+          />
+        ) : (
+          <MessageList 
+            messages={messages} 
+            isLoading={isLoading}
+            className="min-h-full px-4 py-6"
+            fileDataCache={fileDataCache}
+          />
+        )}
       </div>
 
-      {/* Input - Modern floating design */}
-      <div className="flex-shrink-0 z-20 relative">
-        <div className="backdrop-blur-xl border-t shadow-lg chat-input-container">
+      {/* Input - Fixed at bottom on mobile, normal position on desktop */}
+      <div className={cn(
+        "z-20 flex-shrink-0",
+        // Mobile: fixed at bottom with full width
+        "fixed bottom-0 left-0 right-0",
+        // Desktop: relative positioning (normal flex item)
+        "md:relative md:bottom-auto md:left-auto md:right-auto"
+      )}>
+        <div className="border-[#e2e8f0] dark:border-[#374151] bg-[#ffffff] dark:bg-[#1e293b]">
           <MessageInput
             onSendMessage={handleSendMessage}
-            disabled={isLoading || !activeWebhook || !activeChat}
-            autoFocus={shouldAutoFocus}
+            disabled={isLoading || !activeWebhook}
+            autoFocus={shouldAutoFocus && !shouldShowWelcomeScreen}
             placeholder={
               !activeWebhook 
                 ? "Configure a webhook to start chatting..." 
-                : !activeChat 
-                  ? "Select or create a chat..." 
+                : shouldShowWelcomeScreen
+                  ? "Type your message here or pick from the prompts"
                   : isLoading 
                     ? "Sending..." 
                     : "Type a message..."

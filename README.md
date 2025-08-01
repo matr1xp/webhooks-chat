@@ -5,20 +5,27 @@ A modern, responsive chat interface built with Next.js that integrates with n8n 
 ## ✨ Features
 
 ### 🔐 Authentication & User Management
-- **Firebase Authentication** with Google Sign-in and anonymous fallback
-- **User Profile Management** with persistent preferences
+
+- **Firebase Authentication** with Google Sign-in using official Google branding
+- **Anonymous Authentication** fallback for seamless user experience
+- **User Profile Management** with persistent preferences and dark mode support
 - **Session Management** across browser sessions and devices
 - **Security Rules** with user-based access control
+- **Consistent Theme Support** for user interface elements
 
 ### 💬 Advanced Chat System
+
 - **Real-time Messaging** with optimistic UI updates and status tracking
 - **Multi-session Support** with unlimited concurrent chat sessions
 - **Dual Data Persistence**: Firebase Firestore or Redux with localStorage
 - **Bot Integration** with n8n workflow responses and metadata support
 - **Message Types**: Text, file uploads (images/documents up to 10MB)
 - **Drag & Drop Interface** for seamless file sharing
+- **Welcome Screen Prompts** that send messages directly to configured webhooks
+- **Auto-chat Creation** for prompt suggestions with intelligent naming
 
 ### 🔗 Comprehensive Webhook Management
+
 - **Multiple Webhook Configurations** with CRUD operations
 - **Health Monitoring** with automatic connection testing
 - **API Secret Management** with secure storage and show/hide toggle
@@ -27,13 +34,17 @@ A modern, responsive chat interface built with Next.js that integrates with n8n 
 - **Webhook Testing** with built-in diagnostic tools
 
 ### 🎨 Modern UI/UX
-- **Custom Typography System**: Gail Rock (chat), Nordhead Typeface (headers)
+
+- **Custom Typography System**: Soliden Condensed (chat), Soliden Regular (headers)
 - **Light/Dark Mode** with system theme detection and persistence
 - **Responsive Design** with mobile-first approach and touch optimizations
 - **Glassmorphism Effects** with backdrop blur and modern styling
 - **Visual Status Indicators** for connections, messages, and system health
+- **Interactive Welcome Screen** with prompt suggestions that send messages directly
+- **Google Authentication** with official Google branding and icons
 
 ### 🚀 Production-Ready Architecture
+
 - **Next.js 15** with App Router and TypeScript
 - **Static Export** for serverless deployment
 - **Firebase Integration**: Hosting, Functions, Firestore, Auth
@@ -137,7 +148,7 @@ The webhook receives simplified payloads:
 
 ### Directory Structure
 
-```
+```text
 src/
 ├── components/
 │   ├── chat/                    # Chat interface components
@@ -182,18 +193,21 @@ src/
 ### Key Features
 
 #### Dual Data Persistence
+
 - **Firebase Mode**: Real-time Firestore with authentication
 - **Redux Mode**: Local storage with offline support
 - **Feature Flag**: Toggle between modes via `USE_FIREBASE` flag
 - **Data Migration**: Seamless switching between persistence modes
 
 #### Authentication System
+
 - **Google Sign-in**: OAuth integration with Chrome identity API
 - **Anonymous Auth**: Fallback for development and testing
 - **User Profiles**: Persistent user data and preferences
 - **Security Rules**: Firestore access control based on authentication
 
 #### Message Queue System
+
 - **Offline Support**: Queue messages when disconnected
 - **Automatic Retry**: Exponential backoff with manual retry options
 - **Persistent Storage**: Survive browser restarts and network issues
@@ -227,40 +241,45 @@ firebase emulators:start # Start local Firebase emulators
 ### Firebase Cloud Functions
 
 #### `webhookSend`
+
 Secure proxy for n8n webhook communication with authentication and error handling.
 
 #### `healthCheck`
-Monitor n8n webhook availability and connection status.
 
+Monitor n8n webhook availability and connection status.
 
 ### Legacy API Routes (Compatibility)
 
 #### `POST /api/webhook/send`
+
 Direct webhook forwarding (available in Redux mode).
 
 #### `GET /api/health`
+
 Basic health check for webhook connectivity.
 
 ## 🎨 Typography System
 
 ### Custom Font Families
-- **Gail Rock**: Chat bubbles and message content
-  - Regular (400): Standard text
-  - Medium (500): Input fields
-  - Bold (700): Emphasis
-- **Nordhead Typeface**: Headers and navigation
+
+- **Soliden Condensed**: Chat bubbles, message content, and input fields
+  - Regular (400): Standard text and inputs
+- **Soliden Regular**: Headers, navigation, and UI elements
+  - Regular (400): Standard weight
+  - Bold (700): Emphasis and headings
 - **Monoline**: Available for custom styling
 
 ### Usage Examples
+
 ```css
 /* Tailwind classes */
-.font-gail-rock    /* Gail Rock family */
-.font-nordhead     /* Nordhead Typeface */
-.font-monoline     /* Monoline family */
+.font-soliden-condensed    /* Soliden Condensed family */
+.font-soliden             /* Soliden Regular family */
+.font-monoline            /* Monoline family */
 
 /* CSS properties */
-font-family: 'Gail Rock', sans-serif;
-font-family: 'Nordhead Typeface', sans-serif;
+font-family: 'Soliden Condensed', sans-serif;
+font-family: 'Soliden Regular', sans-serif;
 ```
 
 ## 🚀 Production Deployment
@@ -281,12 +300,14 @@ firebase deploy --only firestore
 ### Alternative Platforms
 
 #### Vercel
+
 ```bash
 npm run build
 # Deploy out/ directory to Vercel
 ```
 
 #### Netlify
+
 ```bash
 npm run build
 # Deploy out/ directory to Netlify
@@ -295,6 +316,7 @@ npm run build
 ## 🔧 Customization
 
 ### Theme Customization
+
 Modify theme variables in `src/app/globals.css`:
 
 ```css
@@ -306,13 +328,16 @@ Modify theme variables in `src/app/globals.css`:
 ```
 
 ### Adding Message Types
+
 1. Extend types in `src/types/chat.ts`
 2. Update validation schemas in `src/lib/validation.ts`
 3. Add rendering logic in `MessageBubble.tsx`
 4. Update webhook payload structure
 
 ### Custom Webhooks
+
 Configure webhook endpoints in the app:
+
 1. Open configuration modal
 2. Add webhook with URL and optional secret
 3. Test connection
@@ -323,17 +348,20 @@ Configure webhook endpoints in the app:
 ### Common Issues
 
 #### Authentication Problems
+
 - **Google Sign-in fails**: Check Firebase console configuration
 - **Anonymous auth issues**: Verify Firebase Auth settings
 - **Permission denied**: Review Firestore security rules
 
 #### Webhook Integration
+
 - **404 errors**: Ensure n8n workflow is ACTIVE
 - **403 errors**: Check webhook authentication and secrets
 - **Timeout issues**: Verify webhook response times and network connectivity
 - **Connection refused**: Confirm webhook URL and n8n instance availability
 
 #### Development Issues
+
 - **Build failures**: Run `npm run type-check` and fix TypeScript errors
 - **Test failures**: Check test configuration and dependencies
 - **Firebase connection**: Verify environment variables and Firebase setup
@@ -355,16 +383,17 @@ npm run dev:verbose
 
 - **Framework**: Next.js 15 with App Router
 - **Language**: TypeScript
-- **Styling**: Tailwind CSS with custom typography
+- **Styling**: Tailwind CSS v4 with custom typography
 - **State Management**: Redux Toolkit with Redux Persist
 - **Database**: Firebase Firestore
-- **Authentication**: Firebase Auth
+- **Authentication**: Firebase Auth with Google Sign-in
 - **Backend**: Firebase Cloud Functions
 - **Hosting**: Firebase Hosting
 - **HTTP Client**: Axios
 - **Validation**: Zod
 - **Testing**: Jest + React Testing Library
 - **Icons**: Lucide React
+- **Fonts**: Soliden font family (Condensed & Regular variants)
 
 ## 📄 License
 
@@ -383,6 +412,7 @@ MIT License - feel free to use this project for your own n8n integrations.
 ## 💬 Support
 
 For issues and questions:
+
 1. Check the troubleshooting section above
 2. Review [n8n webhook documentation](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/)
 3. Check [Firebase documentation](https://firebase.google.com/docs)
