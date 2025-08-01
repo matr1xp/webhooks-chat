@@ -32,7 +32,7 @@ interface UseFirestoreChatReturn {
   messages: Message[];
   messagesLoading: boolean;
   addMessage: (messageData: Omit<Message, 'id' | 'timestamp' | 'status'>) => Promise<Message>;
-  addBotMessage: (content: string, metadata?: Record<string, any>) => Promise<Message>;
+  addBotMessage: (content: string, metadata?: Record<string, any>, source?: string) => Promise<Message>;
   updateMessage: (messageId: string, status: Message['status']) => Promise<void>;
   deleteMessage: (messageId: string) => Promise<void>;
   deleteBotReply: (userMessageId: string) => Promise<void>;
@@ -208,7 +208,8 @@ export const useFirestoreChat = (
   // Add bot message
   const addBotMessage = useCallback(async (
     content: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, any>,
+    source?: string
   ): Promise<Message> => {
     if (!userId || !activeChat) throw new Error('User ID and active chat are required');
     if (!activeChat.id || activeChat.id.trim() === '') throw new Error('Active chat ID cannot be empty');
@@ -221,6 +222,7 @@ export const useFirestoreChat = (
         userId: 'bot',
         status: 'delivered',
         isBot: true,
+        source,
         metadata,
       });
 

@@ -46,6 +46,7 @@ export interface FirestoreMessage {
   isBot: boolean;
   status: 'sending' | 'delivered' | 'failed';
   timestamp: Timestamp;
+  source?: string; // Source of the bot response
   metadata?: Record<string, any>;
 }
 

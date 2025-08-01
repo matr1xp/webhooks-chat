@@ -7,6 +7,7 @@ export interface Message {
   userId: string;
   status: 'sending' | 'delivered' | 'failed';
   isBot?: boolean; // Flag to identify bot messages
+  source?: string; // Source of the bot response (e.g., "OpenAI GPT4", "Claude", etc.)
   metadata?: Record<string, any>;
   // For file/image preview purposes
   fileData?: {
@@ -38,6 +39,7 @@ export interface WebhookPayload {
   message: {
     type: 'text' | 'file' | 'image';
     content: string;
+    destination?: string; // Target AI service/model for this message
     metadata?: Record<string, any>;
     file?: {
       name: string;
@@ -62,6 +64,7 @@ export interface WebhookResponse {
   botMessage?: {
     content: string;
     type?: 'text' | 'file' | 'image';
+    source?: string; // Source of the bot response
     metadata?: Record<string, any>;
   };
 }

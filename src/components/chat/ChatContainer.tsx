@@ -88,9 +88,29 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
   const [userId] = useState(() => generateUserId());
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [lastBotSource, setLastBotSource] = useState<{source: string; timestamp: number} | null>(null);
   
   // Redux file cache for persistent Base64 data storage
   const { cache: fileDataCache, setFileCacheData, cleanupCache } = useFileCache();
+
+  // Helper function to check if bot source is still valid (within configured timeout)
+  const getValidDestination = (): string | null => {
+    if (!lastBotSource) return null;
+    
+    const now = Date.now();
+    // Get timeout from environment variable, default to 5 minutes
+    const timeoutMinutes = parseInt(process.env.NEXT_PUBLIC_DESTINATION_TIMEOUT || '5');
+    const timeoutInMs = timeoutMinutes * 60 * 1000; // Convert minutes to milliseconds
+    const timeElapsed = now - lastBotSource.timestamp;
+    
+    if (timeElapsed <= timeoutInMs) {
+      return lastBotSource.source;
+    }
+    
+    // Clear expired bot source
+    setLastBotSource(null);
+    return null;
+  };
 
   // Get active webhook and chat - use Firebase or Redux based on feature flag
   const rawActiveWebhook = USE_FIREBASE ? firebase.activeWebhook : store?.getActiveWebhook();
@@ -337,6 +357,9 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
 
       setLoading(true);
 
+      // Check if we have a valid destination (within 5 minutes)
+      const validDestination = getValidDestination();
+
       // Prepare webhook payload with full file data for cloud run processing
       const payload: WebhookPayload = {
         sessionId,
@@ -349,6 +372,8 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
         message: {
           type,
           content: sanitizedContent,
+          // Include destination field if we have a valid bot source (within 5 minutes)
+          ...(validDestination && { destination: validDestination }),
           // Include FULL file data (with Base64) for cloud run function processing
           ...(fileData && { file: fileData })
         },
@@ -358,7 +383,13 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
           source: 'web' as const,
         },
       };
+
       
+
+      // Clear the last bot source after using it to prevent it from being used in future messages
+      if (validDestination) {
+        setLastBotSource(null);
+      }
 
       // Send to webhook directly - no queueing
       try {
@@ -373,7 +404,8 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
               // Use Firebase bot message method
               await firebase.addBotMessage(
                 response.botMessage.content,
-                response.botMessage.metadata
+                response.botMessage.metadata,
+                response.botMessage.source
               );
             } else {
               // Use Redux method
@@ -383,10 +415,19 @@ export function ChatContainer({ className, onMobileSidebarOpen, isSidebarCollaps
                 type: response.botMessage.type || 'text',
                 content: response.botMessage.content,
                 isBot: true,
+                source: response.botMessage.source,
                 metadata: response.botMessage.metadata,
               });
               // Bot messages are always delivered
               updateMessageStatus(botMessage.id, 'delivered');
+            }
+            
+            // Store bot source for next user message destination (with timestamp for timeout expiry)
+            if (response.botMessage.source) {
+              setLastBotSource({
+                source: response.botMessage.source,
+                timestamp: Date.now()
+              });
             }
             
             // Message count will be updated automatically by useEffect

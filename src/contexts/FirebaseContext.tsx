@@ -47,7 +47,7 @@ interface FirebaseContextType {
   deleteChat: (chatId: string) => Promise<void>;
   cleanupEmptyChats: (webhookId?: string) => Promise<number>;
   addMessage: (messageData: Omit<Message, 'id' | 'timestamp' | 'status'>) => Promise<Message>;
-  addBotMessage: (content: string, metadata?: Record<string, any>) => Promise<Message>;
+  addBotMessage: (content: string, metadata?: Record<string, any>, source?: string) => Promise<Message>;
   updateMessage: (messageId: string, status: Message['status']) => Promise<void>;
   deleteMessage: (messageId: string) => Promise<void>;
   deleteBotReply: (userMessageId: string) => Promise<void>;

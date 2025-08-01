@@ -652,7 +652,7 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
 
             {/* Bot message metadata */}
             <div className="flex items-center justify-between mt-2 text-xs" style={{ color: theme === 'light' ? '#6b7280' : '#94a3b8' }}>
-              <span className="font-medium">AI Assistant • {formatTimestamp(message.timestamp)}</span>
+              <span className="font-medium">{message.source || 'AI Assistant'} • {formatTimestamp(message.timestamp)}</span>
             </div>
           </div>
         </div>
