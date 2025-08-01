@@ -75,6 +75,24 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
       // Handle standalone \text{} commands (that weren't inside \boxed{})
       { pattern: /\\text\{([^}]*)\}/g, replacement: '$1' },
       
+      // Spacing commands
+      { pattern: /\\quad/g, replacement: '$\\quad$' },
+      { pattern: /\\qquad/g, replacement: '$\\qquad$' },
+      { pattern: /\\,/g, replacement: '$\\,$' },
+      { pattern: /\\:/g, replacement: '$\\:$' },
+      { pattern: /\\;/g, replacement: '$\\;$' },
+      { pattern: /\\!/g, replacement: '$\\!$' },
+      { pattern: /\\ /g, replacement: '$\\ $' },
+      
+      // Arrows
+      { pattern: /\\Rightarrow/g, replacement: '$\\Rightarrow$' },
+      { pattern: /\\Leftarrow/g, replacement: '$\\Leftarrow$' },
+      { pattern: /\\Leftrightarrow/g, replacement: '$\\Leftrightarrow$' },
+      { pattern: /\\rightarrow/g, replacement: '$\\rightarrow$' },
+      { pattern: /\\leftarrow/g, replacement: '$\\leftarrow$' },
+      { pattern: /\\leftrightarrow/g, replacement: '$\\leftrightarrow$' },
+      { pattern: /\\to/g, replacement: '$\\to$' },
+      
       // Common symbols
       { pattern: /\\times/g, replacement: '$\\times$' },
       { pattern: /\\div/g, replacement: '$\\div$' },
@@ -89,10 +107,14 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
       { pattern: /\\geq/g, replacement: '$\\geq$' },
       { pattern: /\\neq/g, replacement: '$\\neq$' },
       { pattern: /\\equiv/g, replacement: '$\\equiv$' },
+      { pattern: /\\ll/g, replacement: '$\\ll$' },
+      { pattern: /\\gg/g, replacement: '$\\gg$' },
       
       // Special symbols
       { pattern: /\\infty/g, replacement: '$\\infty$' },
       { pattern: /\\pi/g, replacement: '$\\pi$' },
+      { pattern: /\\emptyset/g, replacement: '$\\emptyset$' },
+      { pattern: /\\varnothing/g, replacement: '$\\varnothing$' },
       
       // Greek letters
       { pattern: /\\alpha/g, replacement: '$\\alpha$' },
@@ -100,15 +122,73 @@ export function MessageBubble({ message, isUser, fileDataCache = {} }: MessageBu
       { pattern: /\\gamma/g, replacement: '$\\gamma$' },
       { pattern: /\\delta/g, replacement: '$\\delta$' },
       { pattern: /\\epsilon/g, replacement: '$\\epsilon$' },
+      { pattern: /\\varepsilon/g, replacement: '$\\varepsilon$' },
+      { pattern: /\\zeta/g, replacement: '$\\zeta$' },
+      { pattern: /\\eta/g, replacement: '$\\eta$' },
       { pattern: /\\theta/g, replacement: '$\\theta$' },
+      { pattern: /\\vartheta/g, replacement: '$\\vartheta$' },
+      { pattern: /\\iota/g, replacement: '$\\iota$' },
+      { pattern: /\\kappa/g, replacement: '$\\kappa$' },
       { pattern: /\\lambda/g, replacement: '$\\lambda$' },
       { pattern: /\\mu/g, replacement: '$\\mu$' },
+      { pattern: /\\nu/g, replacement: '$\\nu$' },
+      { pattern: /\\xi/g, replacement: '$\\xi$' },
+      { pattern: /\\pi/g, replacement: '$\\pi$' },
+      { pattern: /\\rho/g, replacement: '$\\rho$' },
       { pattern: /\\sigma/g, replacement: '$\\sigma$' },
+      { pattern: /\\tau/g, replacement: '$\\tau$' },
+      { pattern: /\\upsilon/g, replacement: '$\\upsilon$' },
+      { pattern: /\\phi/g, replacement: '$\\phi$' },
+      { pattern: /\\varphi/g, replacement: '$\\varphi$' },
+      { pattern: /\\chi/g, replacement: '$\\chi$' },
+      { pattern: /\\psi/g, replacement: '$\\psi$' },
+      { pattern: /\\omega/g, replacement: '$\\omega$' },
+      
+      // Capital Greek letters
+      { pattern: /\\Gamma/g, replacement: '$\\Gamma$' },
+      { pattern: /\\Delta/g, replacement: '$\\Delta$' },
+      { pattern: /\\Theta/g, replacement: '$\\Theta$' },
+      { pattern: /\\Lambda/g, replacement: '$\\Lambda$' },
+      { pattern: /\\Xi/g, replacement: '$\\Xi$' },
+      { pattern: /\\Pi/g, replacement: '$\\Pi$' },
+      { pattern: /\\Sigma/g, replacement: '$\\Sigma$' },
+      { pattern: /\\Upsilon/g, replacement: '$\\Upsilon$' },
+      { pattern: /\\Phi/g, replacement: '$\\Phi$' },
+      { pattern: /\\Psi/g, replacement: '$\\Psi$' },
+      { pattern: /\\Omega/g, replacement: '$\\Omega$' },
       
       // Functions
       { pattern: /\\sqrt\{([^}]*)\}/g, replacement: '$\\sqrt{$1}$' },
       { pattern: /\\sum/g, replacement: '$\\sum$' },
-      { pattern: /\\int/g, replacement: '$\\int$' }
+      { pattern: /\\int/g, replacement: '$\\int$' },
+      { pattern: /\\prod/g, replacement: '$\\prod$' },
+      { pattern: /\\lim/g, replacement: '$\\lim$' },
+      { pattern: /\\log/g, replacement: '$\\log$' },
+      { pattern: /\\ln/g, replacement: '$\\ln$' },
+      { pattern: /\\sin/g, replacement: '$\\sin$' },
+      { pattern: /\\cos/g, replacement: '$\\cos$' },
+      { pattern: /\\tan/g, replacement: '$\\tan$' },
+      { pattern: /\\sec/g, replacement: '$\\sec$' },
+      { pattern: /\\csc/g, replacement: '$\\csc$' },
+      { pattern: /\\cot/g, replacement: '$\\cot$' },
+      
+      // Set operations
+      { pattern: /\\cap/g, replacement: '$\\cap$' },
+      { pattern: /\\cup/g, replacement: '$\\cup$' },
+      { pattern: /\\subset/g, replacement: '$\\subset$' },
+      { pattern: /\\supset/g, replacement: '$\\supset$' },
+      { pattern: /\\subseteq/g, replacement: '$\\subseteq$' },
+      { pattern: /\\supseteq/g, replacement: '$\\supseteq$' },
+      { pattern: /\\in/g, replacement: '$\\in$' },
+      { pattern: /\\notin/g, replacement: '$\\notin$' },
+      
+      // Logic
+      { pattern: /\\land/g, replacement: '$\\land$' },
+      { pattern: /\\lor/g, replacement: '$\\lor$' },
+      { pattern: /\\lnot/g, replacement: '$\\lnot$' },
+      { pattern: /\\neg/g, replacement: '$\\neg$' },
+      { pattern: /\\forall/g, replacement: '$\\forall$' },
+      { pattern: /\\exists/g, replacement: '$\\exists$' }
     ];
 
     // Apply all replacements
